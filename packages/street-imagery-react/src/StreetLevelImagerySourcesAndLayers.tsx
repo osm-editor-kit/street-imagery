@@ -13,11 +13,16 @@ import {
 import {
   buildMapFeatureLayerFilter,
   buildPhotoLayerFilter,
-  photoMatchesFilters,
+  photoFilter,
   type DateRange,
   type PhotoTypeFilter,
 } from '@osm-editor-kit/street-imagery'
-import type { Bbox, NormalizedPhoto } from '@osm-editor-kit/street-imagery'
+import type {
+  Bbox,
+  NormalizedMapFeature,
+  NormalizedPhoto,
+  NormalizedSequence,
+} from '@osm-editor-kit/street-imagery'
 import {
   adapterById,
   fetchedSequencesMinZoom,
@@ -38,7 +43,7 @@ import {
   type ProviderId,
 } from '@osm-editor-kit/street-imagery'
 import type { DataDrivenPropertyValueSpecification, ExpressionSpecification } from 'maplibre-gl'
-import { Fragment, useEffect } from 'react'
+import { Fragment, useEffect, useMemo } from 'react'
 import { Layer, Source } from 'react-map-gl/maplibre'
 import {
   useProviderMapFeatures,
@@ -134,8 +139,151 @@ const AGE_SHADE: ExpressionSpecification = [
 /** Radius of the invisible click target around a photo dot. */
 const PHOTO_TARGET_RADIUS_PX = 10
 
-const PHOTO_SORT_KEY: ExpressionSpecification = ['coalesce', ['get', 'capturedAt'], 0]
-const FEATURE_SORT_KEY: ExpressionSpecification = ['coalesce', ['get', 'lastSeenAt'], 0]
+// Stable defaults: a new `[]` on every render would count as new data.
+const NO_PHOTOS: NormalizedPhoto[] = []
+const NO_SEQUENCES: NormalizedSequence[] = []
+const NO_MAP_FEATURES: NormalizedMapFeature[] = []
+
+const bboxesOverlap = (a: Bbox, b: Bbox) =>
+  a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1]
+
+const sequenceBbox = ({ geometry }: NormalizedSequence): Bbox => {
+  const lines = geometry.type === 'LineString' ? [geometry.coordinates] : geometry.coordinates
+  const bbox: Bbox = [Infinity, Infinity, -Infinity, -Infinity]
+  for (const line of lines) {
+    for (const [lng, lat] of line) {
+      if (lng === undefined || lat === undefined) continue
+      bbox[0] = Math.min(bbox[0], lng)
+      bbox[1] = Math.min(bbox[1], lat)
+      bbox[2] = Math.max(bbox[2], lng)
+      bbox[3] = Math.max(bbox[3], lat)
+    }
+  }
+  return bbox
+}
+
+type PhotoLayerDataInput = {
+  photos: NormalizedPhoto[]
+  sequences: NormalizedSequence[]
+  bbox: Bbox | null
+  photoTypes?: PhotoTypeFilter[]
+  date?: DateRange
+  showPhotos: boolean
+  showSequences: boolean
+  /** Zoom the view shapes are sized for; `null` draws none. */
+  viewfieldZoom: number | null
+}
+
+/**
+ * The GeoJSON of one provider's photo, view shape and sequence sources. A new object makes
+ * MapLibre load and index the source again, so callers keep the result while the input is the same.
+ */
+const buildPhotoLayerData = ({
+  photos,
+  sequences,
+  bbox,
+  photoTypes,
+  date,
+  showPhotos,
+  showSequences,
+  viewfieldZoom,
+}: PhotoLayerDataInput) => {
+  const matchesFilters = photoFilter(photoTypes, date)
+  const visiblePhotos = showPhotos ? photos.filter(matchesFilters) : []
+
+  // Tiles reach far beyond the viewport; draw only nearby photos matching the filters so dense
+  // areas stay fast (the layer filter still applies for style-only changes).
+  const drawBbox = bbox ? padBbox(bbox, 0.25) : null
+  const drawnPhotos = drawBbox
+    ? visiblePhotos.filter((photo) => lngLatInBbox(photo.lngLat, drawBbox))
+    : [...visiblePhotos]
+  // Later features are drawn on top: newest photos last. A `circle-sort-key` would do the same,
+  // but MapLibre then draws every photo with its own draw call, on every frame.
+  drawnPhotos.sort((a, b) => (a.capturedAt ?? 0) - (b.capturedAt ?? 0))
+  const photoCollection = showPhotos
+    ? photosToFeatureCollection(drawnPhotos)
+    : emptyPointCollection()
+
+  // Providers load whole tiles; draw viewfields only when zoomed in, and only for the viewport.
+  const viewfieldCollection =
+    viewfieldZoom != null
+      ? photosToViewfieldsFeatureCollection(visiblePhotos, viewfieldZoom, { bbox })
+      : emptyPolygonCollection()
+
+  // Enrich sequences missing dates from visible photos in the same sequence (Panoramax, etc.).
+  const sequenceCapturedAtById = new Map<string, number>()
+  for (const photo of visiblePhotos) {
+    if (photo.sequenceId == null || photo.capturedAt == null) continue
+    const prev = sequenceCapturedAtById.get(photo.sequenceId)
+    if (prev == null || photo.capturedAt > prev) {
+      sequenceCapturedAtById.set(photo.sequenceId, photo.capturedAt)
+    }
+  }
+
+  const filteredSequences = showSequences
+    ? sequences
+        .map((sequence) => {
+          if (sequence.capturedAt != null) return sequence
+          const fromPhotos = sequenceCapturedAtById.get(sequence.sequenceId)
+          return fromPhotos != null ? { ...sequence, capturedAt: fromPhotos } : sequence
+        })
+        .filter((sequence) => {
+          const asPhoto = {
+            providerId: sequence.providerId,
+            photoId: sequence.sequenceId,
+            sequenceId: sequence.sequenceId,
+            capturedAt: sequence.capturedAt,
+            isPano: sequence.isPano,
+            heading: null,
+            lngLat: [0, 0] as [number, number],
+          }
+          // Like the photos: tiles hold the lines of a far larger area than the viewport.
+          return (
+            matchesFilters(asPhoto) &&
+            (!drawBbox || bboxesOverlap(sequenceBbox(sequence), drawBbox))
+          )
+        })
+    : []
+
+  // Tile lines are simplified and pass beside their photos; run them through the loaded photos.
+  const photoLngLatsBySequence = new Map<string, [number, number][]>()
+  for (const photo of photos) {
+    if (photo.sequenceId == null) continue
+    const list = photoLngLatsBySequence.get(photo.sequenceId)
+    if (list) {
+      list.push(photo.lngLat)
+    } else {
+      photoLngLatsBySequence.set(photo.sequenceId, [photo.lngLat])
+    }
+  }
+  const alignedSequences = filteredSequences.map((sequence) => {
+    const points = photoLngLatsBySequence.get(sequence.sequenceId)
+    if (!points) return sequence
+    const { geometry } = sequence
+    return {
+      ...sequence,
+      geometry:
+        geometry.type === 'LineString'
+          ? {
+              ...geometry,
+              coordinates: alignLineToPoints(geometry.coordinates as [number, number][], points),
+            }
+          : {
+              ...geometry,
+              coordinates: geometry.coordinates.map((line) =>
+                alignLineToPoints(line as [number, number][], points),
+              ),
+            },
+    }
+  })
+
+  const sequenceCollection =
+    alignedSequences.length > 0
+      ? sequencesToFeatureCollection(alignedSequences)
+      : emptyLineCollection()
+
+  return { photoCollection, viewfieldCollection, sequenceCollection }
+}
 
 const PhotoProviderLayer = ({
   providerId,
@@ -156,30 +304,54 @@ const PhotoProviderLayer = ({
   const photosMinZoom = Math.max(meta.minZoom, minZoom)
   const fetchedLinesMinZoom = fetchedSequencesMinZoom(providerId)
   const sequencesMinZoom = Math.max(fetchedLinesMinZoom, minZoom)
-  const { data: photos = [] } = useProviderPhotos(providerId, bbox, zoom, { minZoom })
-  const { data: sequences = [] } = useProviderSequences(providerId, bbox, zoom, { minZoom })
+  const { data: photos = NO_PHOTOS } = useProviderPhotos(providerId, bbox, zoom, { minZoom })
+  const { data: sequences = NO_SEQUENCES } = useProviderSequences(providerId, bbox, zoom, {
+    minZoom,
+  })
 
-  const visiblePhotos =
-    zoom >= photosMinZoom
-      ? photos.filter((photo) => photoMatchesFilters(photo, filter?.photoTypes, filter?.date))
-      : []
-
-  // Tiles reach far beyond the viewport; draw only nearby photos matching the filters so dense
-  // areas stay fast (the layer filter below still applies for style-only changes).
-  const drawBbox = bbox ? padBbox(bbox, 0.25) : null
-  const photoCollection =
-    zoom >= photosMinZoom
-      ? photosToFeatureCollection(
-          drawBbox
-            ? visiblePhotos.filter((photo) => lngLatInBbox(photo.lngLat, drawBbox))
-            : visiblePhotos,
-        )
-      : emptyPointCollection()
   // Providers load whole tiles; draw viewfields only when zoomed in, and only for the viewport.
   const viewfieldsActive = showViewfields && zoom >= VIEWFIELD_MIN_ZOOM
-  const viewfieldCollection = viewfieldsActive
-    ? photosToViewfieldsFeatureCollection(visiblePhotos, zoom, { bbox })
-    : emptyPolygonCollection()
+  // Half-zoom steps: the view shapes barely change size in between.
+  const viewfieldZoom = viewfieldsActive ? Math.floor(zoom * 2) / 2 : null
+  const showPhotos = zoom >= photosMinZoom
+  const showFetchedSequences = showSequences && zoom >= sequencesMinZoom
+
+  // The host passes new `bbox` and `filter` objects on every render; the data only changes with
+  // their values.
+  const [west, south, east, north] = bbox ?? []
+  const photoTypesKey = filter?.photoTypes?.join(',')
+  const dateFrom = filter?.date?.from
+  const dateTo = filter?.date?.to
+  const { photoCollection, viewfieldCollection, sequenceCollection } = useMemo(
+    () =>
+      buildPhotoLayerData({
+        photos,
+        sequences,
+        bbox:
+          west !== undefined && south !== undefined && east !== undefined && north !== undefined
+            ? [west, south, east, north]
+            : null,
+        photoTypes: photoTypesKey ? (photoTypesKey.split(',') as PhotoTypeFilter[]) : undefined,
+        date: { from: dateFrom, to: dateTo },
+        showPhotos,
+        showSequences: showFetchedSequences,
+        viewfieldZoom,
+      }),
+    [
+      photos,
+      sequences,
+      west,
+      south,
+      east,
+      north,
+      photoTypesKey,
+      dateFrom,
+      dateTo,
+      showPhotos,
+      showFetchedSequences,
+      viewfieldZoom,
+    ],
+  )
 
   // `''` never matches: photos without a sequence have `null`.
   const inActiveSequence: ExpressionSpecification = [
@@ -228,79 +400,10 @@ const PhotoProviderLayer = ({
   const photoSrcId = photoSourceId(providerId)
   const viewfieldSrcId = viewfieldSourceId(providerId)
 
-  // Enrich sequences missing dates from visible photos in the same sequence (Panoramax, etc.).
-  const sequenceCapturedAtById = new Map<string, number>()
-  for (const photo of visiblePhotos) {
-    if (photo.sequenceId == null || photo.capturedAt == null) continue
-    const prev = sequenceCapturedAtById.get(photo.sequenceId)
-    if (prev == null || photo.capturedAt > prev) {
-      sequenceCapturedAtById.set(photo.sequenceId, photo.capturedAt)
-    }
-  }
-
-  const filteredSequences =
-    showSequences && zoom >= sequencesMinZoom
-      ? sequences
-          .map((sequence) => {
-            if (sequence.capturedAt != null) return sequence
-            const fromPhotos = sequenceCapturedAtById.get(sequence.sequenceId)
-            return fromPhotos != null ? { ...sequence, capturedAt: fromPhotos } : sequence
-          })
-          .filter((sequence) => {
-            const asPhoto = {
-              providerId: sequence.providerId,
-              photoId: sequence.sequenceId,
-              sequenceId: sequence.sequenceId,
-              capturedAt: sequence.capturedAt,
-              isPano: sequence.isPano,
-              heading: null,
-              lngLat: [0, 0] as [number, number],
-            }
-            return photoMatchesFilters(asPhoto, filter?.photoTypes, filter?.date)
-          })
-      : []
-
-  // Tile lines are simplified and pass beside their photos; run them through the loaded photos.
-  const photoLngLatsBySequence = new Map<string, [number, number][]>()
-  for (const photo of photos) {
-    if (photo.sequenceId == null) continue
-    const list = photoLngLatsBySequence.get(photo.sequenceId)
-    if (list) {
-      list.push(photo.lngLat)
-    } else {
-      photoLngLatsBySequence.set(photo.sequenceId, [photo.lngLat])
-    }
-  }
-  const alignedSequences = filteredSequences.map((sequence) => {
-    const points = photoLngLatsBySequence.get(sequence.sequenceId)
-    if (!points) return sequence
-    const { geometry } = sequence
-    return {
-      ...sequence,
-      geometry:
-        geometry.type === 'LineString'
-          ? {
-              ...geometry,
-              coordinates: alignLineToPoints(geometry.coordinates as [number, number][], points),
-            }
-          : {
-              ...geometry,
-              coordinates: geometry.coordinates.map((line) =>
-                alignLineToPoints(line as [number, number][], points),
-              ),
-            },
-    }
-  })
-
   // Until photos are loaded, MapLibre reads the provider's line tiles itself: few and small
   // requests. The lines above (read from the photo tiles, run through the photos) take over then.
   const sequenceTiles = showSequences ? adapter?.sequenceTiles?.() : null
   const sequenceTilesMinZoom = sequenceTiles ? Math.max(sequenceTiles.minZoom, minZoom) : 0
-
-  const sequenceCollection =
-    alignedSequences.length > 0
-      ? sequencesToFeatureCollection(alignedSequences)
-      : emptyLineCollection()
 
   return (
     <>
@@ -438,7 +541,6 @@ const PhotoProviderLayer = ({
         type="circle"
         source={photoSrcId}
         filter={photoFilter}
-        layout={{ 'circle-sort-key': PHOTO_SORT_KEY }}
         paint={{ 'circle-radius': PHOTO_TARGET_RADIUS_PX, 'circle-opacity': 0 }}
       />
       <Layer
@@ -447,7 +549,6 @@ const PhotoProviderLayer = ({
         type="circle"
         source={photoSrcId}
         filter={photoFilter}
-        layout={{ 'circle-sort-key': PHOTO_SORT_KEY }}
         paint={{
           'circle-radius': dotRadius,
           'circle-color': lineAndDotColor,
@@ -467,15 +568,21 @@ const MapFeatureProviderLayer = ({
   minZoom,
 }: ProviderLayerProps) => {
   const meta = providerById[providerId]
-  const { data: features = [] } = useProviderMapFeatures(providerId, bbox, zoom, { minZoom })
+  const { data: features = NO_MAP_FEATURES } = useProviderMapFeatures(providerId, bbox, zoom, {
+    minZoom,
+  })
 
   const valueFilter = filter?.mapFeatureValue
-  const featureCollection =
-    zoom >= Math.max(meta.minZoom, minZoom)
-      ? mapFeaturesToFeatureCollection(
-          valueFilter ? features.filter((feature) => valueFilter(feature.value)) : features,
-        )
-      : emptyPointCollection()
+  const showFeatures = zoom >= Math.max(meta.minZoom, minZoom)
+  const featureCollection = useMemo(() => {
+    if (!showFeatures) return emptyPointCollection()
+    const drawn = valueFilter
+      ? features.filter((feature) => valueFilter(feature.value))
+      : [...features]
+    // Later features are drawn on top: the ones seen last. See the photo dots on `circle-sort-key`.
+    drawn.sort((a, b) => (a.lastSeenAt ?? 0) - (b.lastSeenAt ?? 0))
+    return mapFeaturesToFeatureCollection(drawn)
+  }, [features, valueFilter, showFeatures])
 
   const featureFilter = buildMapFeatureLayerFilter(filter?.date)
   const featureSrcId = featureSourceId(providerId)
@@ -495,7 +602,6 @@ const MapFeatureProviderLayer = ({
         type="circle"
         source={featureSrcId}
         filter={featureFilter}
-        layout={{ 'circle-sort-key': FEATURE_SORT_KEY }}
         paint={{
           'circle-radius': FEATURE_CIRCLE_RADIUS,
           'circle-color': mapFeatureCircleColor,

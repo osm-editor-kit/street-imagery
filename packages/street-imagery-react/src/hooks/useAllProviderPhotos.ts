@@ -1,5 +1,5 @@
 import type { DateRange, PhotoTypeFilter } from '@osm-editor-kit/street-imagery'
-import { photoMatchesFilters } from '@osm-editor-kit/street-imagery'
+import { photoFilter } from '@osm-editor-kit/street-imagery'
 import type { Bbox, NormalizedPhoto } from '@osm-editor-kit/street-imagery'
 import {
   isBrowserAvailableProvider,
@@ -40,10 +40,8 @@ export const useAllProviderPhotos = (
     ),
   }))
 
-  const photos = queries.flatMap(({ query }) => {
-    const data = query.data ?? []
-    return data.filter((photo) => photoMatchesFilters(photo, photoTypes, date))
-  })
+  const matchesFilters = photoFilter(photoTypes, date)
+  const photos = queries.flatMap(({ query }) => (query.data ?? []).filter(matchesFilters))
 
   const activeQueries = queries.filter(({ providerId }) => enabled.has(providerId))
   const isLoading = activeQueries.some(({ query }) => query.isLoading)

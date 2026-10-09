@@ -74,33 +74,42 @@ export const photoMatchesPhotoTypes = (
   return photo.isPano === true
 }
 
-export const photoMatchesDateRange = (photo: NormalizedPhoto, date?: DateRange): boolean => {
+export const photoMatchesDateRange = (photo: NormalizedPhoto, date?: DateRange): boolean =>
+  photoFilter(undefined, date)(photo)
+
+/**
+ * The type and date filters as one test, for filtering many photos: the dates are parsed once,
+ * not per photo.
+ */
+export const photoFilter = (
+  photoTypes?: PhotoTypeFilter[],
+  date?: DateRange,
+): ((photo: NormalizedPhoto) => boolean) => {
+  const [onlyType] = photoTypesFilter(photoTypes) ?? []
   const range = normalizeDateRange(date)
-  if (!range) {
-    return true
-  }
+  const fromMs = range?.from ? parseIsoDateStartMs(range.from) : null
+  const toMs = range?.to ? parseIsoDateEndMs(range.to) : null
 
-  const capturedAt = photo.capturedAt
-  if (capturedAt == null) {
-    return false
+  return (photo) => {
+    if (onlyType && photo.isPano !== (onlyType === 'pano')) {
+      return false
+    }
+    if (fromMs == null && toMs == null) {
+      return true
+    }
+    const capturedAt = photo.capturedAt
+    if (capturedAt == null) {
+      return false
+    }
+    return (fromMs == null || capturedAt >= fromMs) && (toMs == null || capturedAt <= toMs)
   }
-
-  if (range.from && capturedAt < parseIsoDateStartMs(range.from)) {
-    return false
-  }
-
-  if (range.to && capturedAt > parseIsoDateEndMs(range.to)) {
-    return false
-  }
-
-  return true
 }
 
 export const photoMatchesFilters = (
   photo: NormalizedPhoto,
   photoTypes?: PhotoTypeFilter[],
   date?: DateRange,
-): boolean => photoMatchesPhotoTypes(photo, photoTypes) && photoMatchesDateRange(photo, date)
+): boolean => photoFilter(photoTypes, date)(photo)
 
 /** Map features use iD date semantics: last_seen_at >= from; first_seen_at <= to. */
 export const mapFeatureMatchesDateRange = (

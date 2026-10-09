@@ -19,6 +19,7 @@ export {
   parseIsoDateEndMs,
   parseIsoDateStartMs,
   photoMatchesDateRange,
+  photoFilter,
   photoMatchesFilters,
   photoMatchesPhotoTypes,
   photoTypesFilter,
