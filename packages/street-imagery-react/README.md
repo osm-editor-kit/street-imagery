@@ -26,7 +26,7 @@ import {
 } from '@osm-editor-kit/street-imagery-react'
 import { createStreetImageryConfig } from '@osm-editor-kit/street-imagery'
 
-const bbox = useMapViewportBbox('main', map)
+const bbox = useMapViewportBbox('main')
 
 <StreetLevelImagerySourcesAndLayers
   providers={['mapillary', 'panoramax']}

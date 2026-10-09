@@ -1,4 +1,29 @@
-import { defineConfig } from 'tsup'
+import { readFile } from 'node:fs/promises'
+import { transformAsync } from '@babel/core'
+import { defineConfig, type Options } from 'tsup'
+
+/**
+ * Runs the React Compiler over the sources before esbuild, so the published components and hooks
+ * are memoized like in an app that compiles them itself. Babel only parses TypeScript and JSX
+ * here; esbuild still turns them into JavaScript.
+ */
+const reactCompiler: NonNullable<Options['esbuildPlugins']>[number] = {
+  name: 'react-compiler',
+  setup(build) {
+    build.onLoad({ filter: /\.tsx?$/ }, async ({ path }) => {
+      if (path.includes('/node_modules/')) return null
+      const result = await transformAsync(await readFile(path, 'utf8'), {
+        filename: path,
+        babelrc: false,
+        configFile: false,
+        parserOpts: { plugins: ['typescript', 'jsx'] },
+        plugins: ['babel-plugin-react-compiler'],
+      })
+      if (result?.code == null) return null
+      return { contents: result.code, loader: path.endsWith('x') ? 'tsx' : 'ts' }
+    })
+  },
+}
 
 export default defineConfig({
   entry: {
@@ -24,6 +49,7 @@ export default defineConfig({
     'react-map-gl',
     'zustand',
   ],
+  esbuildPlugins: [reactCompiler],
   esbuildOptions(options) {
     options.jsx = 'automatic'
   },

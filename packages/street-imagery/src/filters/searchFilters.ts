@@ -58,47 +58,64 @@ export const photoTypesFilter = (photoTypes?: PhotoTypeFilter[]): PhotoTypeFilte
   return unique
 }
 
+type ParsedPhotoFilter = {
+  onlyType: PhotoTypeFilter | undefined
+  fromMs: number | null
+  toMs: number | null
+}
+
+const parsePhotoFilter = (photoTypes?: PhotoTypeFilter[], date?: DateRange): ParsedPhotoFilter => {
+  const range = normalizeDateRange(date)
+  return {
+    onlyType: photoTypesFilter(photoTypes)?.[0],
+    fromMs: range?.from ? parseIsoDateStartMs(range.from) : null,
+    toMs: range?.to ? parseIsoDateEndMs(range.to) : null,
+  }
+}
+
+const photoMatchesParsedFilter = (
+  photo: NormalizedPhoto,
+  { onlyType, fromMs, toMs }: ParsedPhotoFilter,
+): boolean => {
+  if (onlyType && photo.isPano !== (onlyType === 'pano')) {
+    return false
+  }
+  if (fromMs == null && toMs == null) {
+    return true
+  }
+  const capturedAt = photo.capturedAt
+  if (capturedAt == null) {
+    return false
+  }
+  return (fromMs == null || capturedAt >= fromMs) && (toMs == null || capturedAt <= toMs)
+}
+
 export const photoMatchesPhotoTypes = (
   photo: NormalizedPhoto,
   photoTypes?: PhotoTypeFilter[],
-): boolean => photoFilter(photoTypes)(photo)
+): boolean => photoMatchesParsedFilter(photo, parsePhotoFilter(photoTypes))
 
 export const photoMatchesDateRange = (photo: NormalizedPhoto, date?: DateRange): boolean =>
-  photoFilter(undefined, date)(photo)
+  photoMatchesParsedFilter(photo, parsePhotoFilter(undefined, date))
+
+/** Tests one photo. For a list use `photoFilter`, which reads the filters once. */
+export const photoMatchesFilters = (
+  photo: NormalizedPhoto,
+  photoTypes?: PhotoTypeFilter[],
+  date?: DateRange,
+): boolean => photoMatchesParsedFilter(photo, parsePhotoFilter(photoTypes, date))
 
 /**
- * The type and date filters as one test, for filtering many photos: the dates are parsed once,
+ * The type and date filters as one test, for filtering many photos: the filters are read once,
  * not per photo.
  */
 export const photoFilter = (
   photoTypes?: PhotoTypeFilter[],
   date?: DateRange,
 ): ((photo: NormalizedPhoto) => boolean) => {
-  const [onlyType] = photoTypesFilter(photoTypes) ?? []
-  const range = normalizeDateRange(date)
-  const fromMs = range?.from ? parseIsoDateStartMs(range.from) : null
-  const toMs = range?.to ? parseIsoDateEndMs(range.to) : null
-
-  return (photo) => {
-    if (onlyType && photo.isPano !== (onlyType === 'pano')) {
-      return false
-    }
-    if (fromMs == null && toMs == null) {
-      return true
-    }
-    const capturedAt = photo.capturedAt
-    if (capturedAt == null) {
-      return false
-    }
-    return (fromMs == null || capturedAt >= fromMs) && (toMs == null || capturedAt <= toMs)
-  }
+  const parsed = parsePhotoFilter(photoTypes, date)
+  return (photo) => photoMatchesParsedFilter(photo, parsed)
 }
-
-export const photoMatchesFilters = (
-  photo: NormalizedPhoto,
-  photoTypes?: PhotoTypeFilter[],
-  date?: DateRange,
-): boolean => photoFilter(photoTypes, date)(photo)
 
 /** Map features use iD date semantics: last_seen_at >= from; first_seen_at <= to. */
 export const mapFeatureMatchesDateRange = (

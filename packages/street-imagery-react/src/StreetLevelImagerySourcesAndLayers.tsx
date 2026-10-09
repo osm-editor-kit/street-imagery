@@ -8,6 +8,7 @@ import {
   photosToFeatureCollection,
   photosToViewfieldsFeatureCollection,
   VIEWFIELD_MIN_ZOOM,
+  viewfieldZoomStep,
   sequencesToFeatureCollection,
 } from '@osm-editor-kit/street-imagery'
 import {
@@ -44,7 +45,7 @@ import {
   type ProviderId,
 } from '@osm-editor-kit/street-imagery'
 import type { DataDrivenPropertyValueSpecification, ExpressionSpecification } from 'maplibre-gl'
-import { Fragment, useEffect, useMemo } from 'react'
+import { Fragment, useEffect } from 'react'
 import { Layer, Source } from 'react-map-gl/maplibre'
 import {
   useProviderMapFeatures,
@@ -172,10 +173,7 @@ type PhotoLayerDataInput = {
   viewfieldZoom: number | null
 }
 
-/**
- * The GeoJSON of one provider's photo, view shape and sequence sources. A new object makes
- * MapLibre load and index the source again, so callers keep the result while the input is the same.
- */
+/** The GeoJSON of one provider's photo, view shape and sequence sources. */
 const buildPhotoLayerData = ({
   photos,
   sequences,
@@ -283,6 +281,21 @@ const buildPhotoLayerData = ({
   return { photoCollection, viewfieldCollection, sequenceCollection }
 }
 
+/** The GeoJSON of one provider's map feature source. */
+const buildMapFeatureCollection = (
+  features: NormalizedMapFeature[],
+  valueFilter: ((value: string) => boolean) | undefined,
+  showFeatures: boolean,
+) => {
+  if (!showFeatures) return emptyPointCollection()
+  const drawn = valueFilter
+    ? features.filter((feature) => valueFilter(feature.value))
+    : [...features]
+  // Later features are drawn on top: the ones seen last. See the photo dots on `circle-sort-key`.
+  drawn.sort((a, b) => (a.lastSeenAt ?? 0) - (b.lastSeenAt ?? 0))
+  return mapFeaturesToFeatureCollection(drawn)
+}
+
 const PhotoProviderLayer = ({
   providerId,
   bbox,
@@ -309,47 +322,25 @@ const PhotoProviderLayer = ({
 
   // Providers load whole tiles; draw viewfields only when zoomed in, and only for the viewport.
   const viewfieldsActive = showViewfields && zoom >= VIEWFIELD_MIN_ZOOM
-  // Half-zoom steps: the view shapes barely change size in between.
-  const viewfieldZoom = viewfieldsActive ? Math.floor(zoom * 2) / 2 : null
+  const viewfieldZoom = viewfieldsActive ? viewfieldZoomStep(zoom) : null
   const showPhotos = zoom >= photosMinZoom
   const showFetchedSequences = showSequences && zoom >= sequencesMinZoom
 
-  // The host passes new `bbox` and `filter` objects on every render; the data only changes with
-  // their values.
-  const [west, south, east, north] = bbox ?? []
-  const photoTypesKey = filter?.photoTypes?.join(',')
+  // A new GeoJSON object makes MapLibre load and index its source again. The React Compiler keeps
+  // this result while the values below are the same; the date is passed by value, because hosts
+  // often create a new `filter` object on every render.
   const dateFrom = filter?.date?.from
   const dateTo = filter?.date?.to
-  const { photoCollection, viewfieldCollection, sequenceCollection } = useMemo(
-    () =>
-      buildPhotoLayerData({
-        photos,
-        sequences,
-        bbox:
-          west !== undefined && south !== undefined && east !== undefined && north !== undefined
-            ? [west, south, east, north]
-            : null,
-        photoTypes: photoTypesKey ? (photoTypesKey.split(',') as PhotoTypeFilter[]) : undefined,
-        date: { from: dateFrom, to: dateTo },
-        showPhotos,
-        showSequences: showFetchedSequences,
-        viewfieldZoom,
-      }),
-    [
-      photos,
-      sequences,
-      west,
-      south,
-      east,
-      north,
-      photoTypesKey,
-      dateFrom,
-      dateTo,
-      showPhotos,
-      showFetchedSequences,
-      viewfieldZoom,
-    ],
-  )
+  const { photoCollection, viewfieldCollection, sequenceCollection } = buildPhotoLayerData({
+    photos,
+    sequences,
+    bbox,
+    photoTypes: filter?.photoTypes,
+    date: { from: dateFrom, to: dateTo },
+    showPhotos,
+    showSequences: showFetchedSequences,
+    viewfieldZoom,
+  })
 
   // `''` never matches: photos without a sequence have `null`.
   const inActiveSequence: ExpressionSpecification = [
@@ -394,7 +385,7 @@ const PhotoProviderLayer = ({
   ]
   // The shown photo has the live view cone; its static shape would only double it.
   const notShownPhoto: ExpressionSpecification = ['!=', ['get', 'photoId'], shownPhotoId ?? '']
-  const photoFilter = buildPhotoLayerFilter(filter?.photoTypes, filter?.date)
+  const photoLayerFilter = buildPhotoLayerFilter(filter?.photoTypes, filter?.date)
   const photoSrcId = photoSourceId(providerId)
   const viewfieldSrcId = viewfieldSourceId(providerId)
 
@@ -442,7 +433,7 @@ const PhotoProviderLayer = ({
             source-layer={sequenceTiles.sourceLayer}
             minzoom={sequenceTilesMinZoom}
             maxzoom={fetchedLinesMinZoom}
-            filter={renameExpressionProperties(photoFilter, sequenceTiles.properties)}
+            filter={renameExpressionProperties(photoLayerFilter, sequenceTiles.properties)}
             layout={{
               'line-cap': 'round',
               'line-join': 'round',
@@ -538,7 +529,7 @@ const PhotoProviderLayer = ({
         id={photoTargetLayerId(providerId)}
         type="circle"
         source={photoSrcId}
-        filter={photoFilter}
+        filter={photoLayerFilter}
         paint={{ 'circle-radius': PHOTO_TARGET_RADIUS_PX, 'circle-opacity': 0 }}
       />
       <Layer
@@ -546,7 +537,7 @@ const PhotoProviderLayer = ({
         id={photoLayerId(providerId)}
         type="circle"
         source={photoSrcId}
-        filter={photoFilter}
+        filter={photoLayerFilter}
         paint={{
           'circle-radius': dotRadius,
           'circle-color': lineAndDotColor,
@@ -572,15 +563,7 @@ const MapFeatureProviderLayer = ({
 
   const valueFilter = filter?.mapFeatureValue
   const showFeatures = zoom >= Math.max(meta.minZoom, minZoom)
-  const featureCollection = useMemo(() => {
-    if (!showFeatures) return emptyPointCollection()
-    const drawn = valueFilter
-      ? features.filter((feature) => valueFilter(feature.value))
-      : [...features]
-    // Later features are drawn on top: the ones seen last. See the photo dots on `circle-sort-key`.
-    drawn.sort((a, b) => (a.lastSeenAt ?? 0) - (b.lastSeenAt ?? 0))
-    return mapFeaturesToFeatureCollection(drawn)
-  }, [features, valueFilter, showFeatures])
+  const featureCollection = buildMapFeatureCollection(features, valueFilter, showFeatures)
 
   const featureFilter = buildMapFeatureLayerFilter(filter?.date)
   const featureSrcId = featureSourceId(providerId)

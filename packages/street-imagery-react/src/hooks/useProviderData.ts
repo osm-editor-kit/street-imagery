@@ -11,6 +11,9 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 const bboxKey = (bbox: Bbox | null) =>
   bbox ? `${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]}` : 'none'
 
+// Adapters pick their tiles by whole zoom levels: a zoom step within a level loads nothing new.
+const zoomKey = (zoom: number) => Math.floor(zoom)
+
 // Adapters return whole-tile data (a single dense z14 tile can hold >100k points).
 // Clip to the requested viewport so map sources and legend counts stay manageable —
 // without this, dense areas freeze the main thread (MapLibre source updates + GC).
@@ -45,7 +48,7 @@ export const useProviderPhotos = (
     adapter?.fetchPhotos != null
 
   return useQuery({
-    queryKey: ['provider-photos', providerId, bboxKey(bbox), zoom],
+    queryKey: ['provider-photos', providerId, bboxKey(bbox), zoomKey(zoom)],
     queryFn: async ({ signal }) => {
       const photos = await adapter!.fetchPhotos!(bbox as Bbox, zoom, signal)
       return photos.filter(withinBbox(bbox as Bbox))
@@ -73,7 +76,7 @@ export const useProviderSequences = (
     adapter?.fetchSequences != null
 
   return useQuery({
-    queryKey: ['provider-sequences', providerId, bboxKey(bbox), zoom],
+    queryKey: ['provider-sequences', providerId, bboxKey(bbox), zoomKey(zoom)],
     queryFn: ({ signal }) => adapter?.fetchSequences?.(bbox as Bbox, zoom, signal) ?? [],
     enabled,
     placeholderData: previousDataWhile(enabled),
@@ -97,7 +100,7 @@ export const useProviderMapFeatures = (
     adapter?.fetchMapFeatures != null
 
   return useQuery({
-    queryKey: ['provider-map-features', providerId, bboxKey(bbox), zoom],
+    queryKey: ['provider-map-features', providerId, bboxKey(bbox), zoomKey(zoom)],
     queryFn: async ({ signal }) => {
       const features = await adapter!.fetchMapFeatures!(bbox as Bbox, zoom, signal)
       return features.filter(withinBbox(bbox as Bbox))

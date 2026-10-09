@@ -46,6 +46,7 @@ export {
   VIEWFIELD_MIN_ZOOM,
   type ViewfieldOptions,
   photosToViewfieldsFeatureCollection,
+  viewfieldZoomStep,
   type ViewfieldPhotoProps,
 } from './map/viewfields'
 export * from './providers/model'

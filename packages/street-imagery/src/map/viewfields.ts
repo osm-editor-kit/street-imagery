@@ -11,6 +11,12 @@ export const PANO_VIEWFIELD_FOV_DEG = 360
 /** Viewfields only make sense (and stay cheap) when zoomed in on a few streets. */
 export const VIEWFIELD_MIN_ZOOM = 17
 
+/**
+ * View shapes are sized in half-zoom steps: sizes barely change in between, so the shapes of one
+ * step can be kept while the map zooms within it.
+ */
+export const viewfieldZoomStep = (zoom: number): number => Math.floor(zoom * 2) / 2
+
 /** Upper bound of viewfield polygons per provider; dense areas would otherwise freeze the map. */
 export const VIEWFIELD_MAX_FEATURES = 1500
 
@@ -97,8 +103,7 @@ export const photosToViewfieldsFeatureCollection = (
   zoom: number,
   { bbox, maxFeatures = VIEWFIELD_MAX_FEATURES }: ViewfieldOptions = {},
 ): FeatureCollection<Polygon, ViewfieldPhotoProps> => {
-  // Half-zoom steps: sizes barely change in between, and callers can reuse the result.
-  const radius = viewShapeRadiusMeters(Math.floor(zoom * 2) / 2)
+  const radius = viewShapeRadiusMeters(viewfieldZoomStep(zoom))
   const features: Feature<Polygon, ViewfieldPhotoProps>[] = []
 
   const inView = bbox ? photos.filter((photo) => inBbox(photo.lngLat, bbox)) : photos
