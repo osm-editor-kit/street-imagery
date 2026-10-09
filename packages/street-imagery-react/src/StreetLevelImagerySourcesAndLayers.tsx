@@ -25,6 +25,7 @@ import type {
 } from '@osm-editor-kit/street-imagery'
 import {
   adapterById,
+  bboxIntersects,
   fetchedSequencesMinZoom,
   providerById,
   featureLayerId,
@@ -144,9 +145,6 @@ const NO_PHOTOS: NormalizedPhoto[] = []
 const NO_SEQUENCES: NormalizedSequence[] = []
 const NO_MAP_FEATURES: NormalizedMapFeature[] = []
 
-const bboxesOverlap = (a: Bbox, b: Bbox) =>
-  a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1]
-
 const sequenceBbox = ({ geometry }: NormalizedSequence): Bbox => {
   const lines = geometry.type === 'LineString' ? [geometry.coordinates] : geometry.coordinates
   const bbox: Bbox = [Infinity, Infinity, -Infinity, -Infinity]
@@ -240,7 +238,7 @@ const buildPhotoLayerData = ({
           // Like the photos: tiles hold the lines of a far larger area than the viewport.
           return (
             matchesFilters(asPhoto) &&
-            (!drawBbox || bboxesOverlap(sequenceBbox(sequence), drawBbox))
+            (!drawBbox || bboxIntersects(sequenceBbox(sequence), drawBbox))
           )
         })
     : []
