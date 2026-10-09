@@ -61,18 +61,7 @@ export const photoTypesFilter = (photoTypes?: PhotoTypeFilter[]): PhotoTypeFilte
 export const photoMatchesPhotoTypes = (
   photo: NormalizedPhoto,
   photoTypes?: PhotoTypeFilter[],
-): boolean => {
-  const active = photoTypesFilter(photoTypes)
-  if (!active) {
-    return true
-  }
-
-  const [onlyType] = active
-  if (onlyType === 'flat') {
-    return photo.isPano === false
-  }
-  return photo.isPano === true
-}
+): boolean => photoFilter(photoTypes)(photo)
 
 export const photoMatchesDateRange = (photo: NormalizedPhoto, date?: DateRange): boolean =>
   photoFilter(undefined, date)(photo)
