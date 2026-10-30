@@ -244,7 +244,6 @@ export const MapRoot = () => {
       mapStyle={MAP_STYLE}
       style={{ width: '100%', height: '100%' }}
       attributionControl={false}
-      RTLTextPlugin={false}
       cursor={pickingLocation ? 'crosshair' : cursor}
       interactiveLayerIds={interactiveLayerIds}
       onClick={handleClick}
