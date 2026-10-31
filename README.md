@@ -11,12 +11,14 @@ Part of the [`osm-editor-kit`](https://github.com/osm-editor-kit) family.
 and [`@osm-editor-kit/street-imagery-react`](https://npmx.dev/package/@osm-editor-kit/street-imagery-react)
 on npm · **Live preview:** [osm-editor-kit.github.io/street-imagery](https://osm-editor-kit.github.io/street-imagery/)
 
-> [!NOTE]
-> Claude Opus 5.5 wrote and reviewed the code of these packages. [@tordans](https://github.com/tordans) specified what they should do and tested and verified their user-facing behavior.
-
 ```bash
 bun add @osm-editor-kit/street-imagery @osm-editor-kit/street-imagery-react
 ```
+
+> [!NOTE]
+> Claude Opus 5.5 wrote and reviewed the code of these packages. [@tordans](https://github.com/tordans) specified what they should do and tested and verified their user-facing behavior.
+
+## Develop
 
 This is a Bun-workspaces monorepo:
 
@@ -27,15 +29,15 @@ This is a Bun-workspaces monorepo:
 | [`apps/preview`](apps/preview)                                   | The preview: every provider on one full-screen map, also the test bed for both packages.                            |
 | [`docs`](docs)                                                   | Research on the providers and [how to use the packages in a host app](docs/packages-for-knotenpunkte-and-tilda.md). |
 
-## Develop
-
 ```bash
 bun install
 bun run dev      # preview app, uses the package sources directly
 bun run check    # format, lint, type-check, tests
 ```
 
-## Try it in another app before it is published
+The preview deploys to GitHub Pages on every push to `main`, so it can be ahead of npm.
+
+### Try it in another app before it is published
 
 ```bash
 bun run build:packages
@@ -51,10 +53,11 @@ the app, and restart its dev server.
 
 ## Release
 
-Versions use [changesets](https://github.com/changesets/changesets) and are published by hand, see
-[`.changeset/README.md`](.changeset/README.md).
+Versions and changelogs use [changesets](https://github.com/changesets/changesets), see [`.changeset/README.md`](.changeset/README.md). Releases run from a terminal with npm 2FA:
 
-The preview deploys to GitHub Pages on every push to `main`, so it can be ahead of npm.
+```bash
+bun run release
+```
 
 ## License
 
