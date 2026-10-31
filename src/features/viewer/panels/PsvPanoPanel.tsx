@@ -1,5 +1,6 @@
 import type { NormalizedPhoto } from '@osm-editor-kit/street-imagery'
 import '@photo-sphere-viewer/core/index.css'
+import '@photo-sphere-viewer/virtual-tour-plugin/index.css'
 import { resolvePhotoPanoramaUrl } from '@osm-editor-kit/street-imagery'
 import { useViewerActions } from '@osm-editor-kit/street-imagery-react'
 import { type PanoData, type PanoDataProvider, Viewer } from '@photo-sphere-viewer/core'
@@ -11,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { useAppSearchNavigation } from '@/app/searchNavigation'
 import { useEaseMainMapToPoint } from '@/features/map/useStableMainMapRefs'
+import { useAppI18n } from '@/i18n/useAppI18n'
 
 const normalizeBearing = (degrees: number) => ((degrees % 360) + 360) % 360
 
@@ -113,6 +115,8 @@ export const PsvPanoPanel = ({ photo, groupPhotos }: PsvPanoPanelProps) => {
   const pendingHfovRef = useRef<number | null>(null)
   const currentHeadingRef = useRef<number | null>(photo.heading)
   const [isLoading, setIsLoading] = useState(true)
+  const [isError, setIsError] = useState(false)
+  const { t } = useAppI18n()
   const { updateSelected } = useAppSearchNavigation()
   const actions = useViewerActions()
   const easeMainMapToPoint = useEaseMainMapToPoint()
@@ -280,9 +284,14 @@ export const PsvPanoPanel = ({ photo, groupPhotos }: PsvPanoPanelProps) => {
 
       let cleanup: (() => void) | undefined
 
-      void setup().then((dispose) => {
-        cleanup = dispose
-      })
+      setup()
+        .then((dispose) => {
+          cleanup = dispose
+        })
+        .catch(() => {
+          setIsLoading(false)
+          setIsError(true)
+        })
 
       return () => {
         cancelled = true
@@ -331,6 +340,11 @@ export const PsvPanoPanel = ({ photo, groupPhotos }: PsvPanoPanelProps) => {
       {isLoading ? (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-sm text-slate-300">
           Loading panorama…
+        </div>
+      ) : null}
+      {isError ? (
+        <div className="absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-slate-300">
+          {t.viewer.imageUnavailable}
         </div>
       ) : null}
     </div>

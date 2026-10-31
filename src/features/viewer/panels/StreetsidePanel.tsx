@@ -1,5 +1,6 @@
 import type { NormalizedPhoto } from '@osm-editor-kit/street-imagery'
 import '@photo-sphere-viewer/core/index.css'
+import '@photo-sphere-viewer/virtual-tour-plugin/index.css'
 import { haversineDistanceMeters } from '@osm-editor-kit/street-imagery'
 import { photoGroupSequenceId } from '@osm-editor-kit/street-imagery'
 import { useViewerActions } from '@osm-editor-kit/street-imagery-react'
