@@ -181,7 +181,7 @@ const { photos } = useAllProviderPhotos(providers, bbox, zoom) // no date: all p
 />
 ```
 
-A handle at its end means no limit, so the left end also shows photos older than the slider spans (`maxYears`, default 10). The scale itself is in the core package (`dateSliderPosition`, `dateSliderBins`, …) for a host that draws its own chart. The texts are in `messages.dateFilter`.
+A click or tap on the chart moves the nearer handle to that exact place, and a press on the chart can go on as a drag. Handles on the same spot come apart in the direction of the drag. Handles stay separate targets for mouse and touch, at least 44px high and wide, and a vertical swipe on a phone scrolls the page. A handle at its end means no limit, so the left end also shows photos older than the slider spans (`maxYears`, default 10). The scale itself is in the core package (`dateSliderPosition`, `dateSliderBins`, …) for a host that draws its own chart. The texts are in `messages.dateFilter`.
 
 ## Pick a place on the map to open elsewhere
 

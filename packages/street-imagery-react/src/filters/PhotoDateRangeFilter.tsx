@@ -10,8 +10,18 @@ import {
   type DateRange,
   type DateSliderPositions,
 } from '@osm-editor-kit/street-imagery'
-import { useRef, useState } from 'react'
+import { useRef, useState, type PointerEvent } from 'react'
 import { useStreetImageryI18n } from '../i18n/StreetImageryLocaleProvider'
+import {
+  DATE_SLIDER_STEP,
+  HANDLE_PX,
+  dragPositions,
+  handleOfDrag,
+  positionOnTrack,
+  pressedHandle,
+  tapPositions,
+  type DateSliderHandle,
+} from './dateSliderPointer'
 
 /** A fixed date to show in the chart, e.g. the start of a project or of a survey. */
 export type PhotoDateMarker = {
@@ -25,7 +35,10 @@ export type PhotoDateMarker = {
 export type PhotoDateRangeFilterProps = {
   /** The chosen range, days as `YYYY-MM-DD`. No `from` and no `to`: all dates. */
   value: DateRange
-  /** Called when a handle is released, a year label is clicked or a date input changes. */
+  /**
+   * Called when a handle is released, the chart is clicked, a year label is clicked or a date
+   * input changes.
+   */
   onChange: (range: DateRange) => void
   /**
    * Capture times (ms) of the photos to show as marks above the slider, usually all photos in
@@ -56,21 +69,31 @@ export type PhotoDateRangeFilterProps = {
 
 const DEFAULT_YEAR_LINES = [1, 2, 3, 4] as const
 const BINS = 60
-const STEP = 0.001
 const CHART_HEIGHT_PX = 36
 const RED = '#dc2626'
 
+const DRAG_SLOP_PX = 4
+
 // The native handles are 16px wide; their centers travel between 8px from each end. The chart
-// has the same inset (`mx-2`), so a line at 40% sits where a handle at 40% points.
+// has the same inset (`mx-2`), so a line at 40% sits where a handle at 40% points. The inputs are
+// for the keyboard and for what they show: mouse and touch go through the chart and track around
+// them, a target wider and higher than a native handle could be without growing.
 const HANDLE_CLASS =
-  'pointer-events-none absolute inset-0 m-0 h-full w-full cursor-pointer appearance-none bg-transparent focus:outline-none ' +
+  'pointer-events-none absolute inset-0 m-0 h-full w-full appearance-none bg-transparent focus:outline-none ' +
   '[&::-webkit-slider-runnable-track]:appearance-none [&::-webkit-slider-runnable-track]:bg-transparent ' +
   '[&::-moz-range-track]:bg-transparent ' +
-  '[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:cursor-grab [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-slate-800 [&::-webkit-slider-thumb]:shadow ' +
-  '[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:box-border [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:cursor-grab [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-slate-800 [&::-moz-range-thumb]:shadow ' +
+  '[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-slate-800 [&::-webkit-slider-thumb]:shadow ' +
+  '[&::-moz-range-thumb]:box-border [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-slate-800 [&::-moz-range-thumb]:shadow ' +
   'focus-visible:[&::-webkit-slider-thumb]:ring-2 focus-visible:[&::-webkit-slider-thumb]:ring-sky-500 focus-visible:[&::-moz-range-thumb]:ring-2 focus-visible:[&::-moz-range-thumb]:ring-sky-500'
 
 const percent = (position: number): string => `${position * 100}%`
+
+/** Width of the track and its left end on screen, from the element around chart and track. */
+const trackBox = (area: HTMLElement): { left: number; width: number } => {
+  const { left, width } = area.getBoundingClientRect()
+  const inset = HANDLE_PX / 2
+  return { left: left + inset, width: Math.max(1, width - 2 * inset) }
+}
 
 /**
  * Date filter for photos after iD's photo age slider: one slider with two handles on a scale that
@@ -100,6 +123,14 @@ export const PhotoDateRangeFilter = ({
   const [dragged, setDragged] = useState<DateSliderPositions | null>(null)
   const fromInput = useRef<HTMLInputElement>(null)
   const toInput = useRef<HTMLInputElement>(null)
+  const press = useRef<{
+    pointerId: number
+    x: number
+    position: number
+    start: DateSliderPositions
+    handle: DateSliderHandle | null
+    dragging: boolean
+  } | null>(null)
 
   const positions = dragged ?? dateRangeToSliderPositions(value, scale)
   const shownRange = dragged ? sliderPositionsToDateRange(dragged, scale) : value
@@ -111,21 +142,25 @@ export const PhotoDateRangeFilter = ({
     return moved === 'from' ? { from: Math.min(from, to), to } : { from, to: Math.max(from, to) }
   }
 
+  const commit = (moved: DateSliderHandle, next: DateSliderPositions) => {
+    setDragged(null)
+    // Only the moved side changes: the other day would shift by the slider's step otherwise.
+    const range = sliderPositionsToDateRange(next, scale)
+    const other = moved === 'from' ? 'to' : 'from'
+    onChange({ ...range, [other]: value[other] })
+  }
+
   // React's `onChange` runs on every move; the native `change` only when the handle is released.
-  const commitOnRelease = (moved: 'from' | 'to') => (input: HTMLInputElement | null) => {
+  const commitOnRelease = (moved: DateSliderHandle) => (input: HTMLInputElement | null) => {
     if (!input) {
       return undefined
     }
-    const commit = () => {
-      setDragged(null)
-      // Only the moved side changes: the other day would shift by the slider's step otherwise.
-      const next = sliderPositionsToDateRange(readPositions(moved), scale)
-      const other = moved === 'from' ? 'to' : 'from'
-      onChange({ ...next, [other]: value[other] })
+    const onRelease = () => {
+      commit(moved, readPositions(moved))
     }
-    input.addEventListener('change', commit)
+    input.addEventListener('change', onRelease)
     return () => {
-      input.removeEventListener('change', commit)
+      input.removeEventListener('change', onRelease)
     }
   }
 
@@ -134,6 +169,75 @@ export const PhotoDateRangeFilter = ({
   const trackDrag = (moved: 'from' | 'to', event: Event) => {
     if (event.type === 'input') {
       setDragged(readPositions(moved))
+    }
+  }
+
+  // A press only turns into a change on release or when it moves sideways: a vertical swipe stays
+  // with the browser (`touch-pan-y`), which then scrolls and sends `pointercancel`.
+  const onPressStart = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || press.current) {
+      return
+    }
+    const track = trackBox(event.currentTarget)
+    const position = positionOnTrack(event.clientX - track.left, track.width)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    press.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      position,
+      start: positions,
+      handle: pressedHandle(positions, position, track.width),
+      dragging: false,
+    }
+  }
+
+  const onPressMove = (event: PointerEvent<HTMLDivElement>) => {
+    const current = press.current
+    if (current?.pointerId !== event.pointerId) {
+      return
+    }
+    const deltaPx = event.clientX - current.x
+    if (!current.dragging && Math.abs(deltaPx) < DRAG_SLOP_PX) {
+      return
+    }
+    current.dragging = true
+    current.handle ??= handleOfDrag(deltaPx)
+    const { width } = trackBox(event.currentTarget)
+    setDragged(dragPositions(current.start, current.position, current.handle, deltaPx, width))
+  }
+
+  const onPressEnd = (event: PointerEvent<HTMLDivElement>) => {
+    const current = press.current
+    if (current?.pointerId !== event.pointerId) {
+      return
+    }
+    press.current = null
+    const { width } = trackBox(event.currentTarget)
+    const { handle, positions: next } =
+      current.dragging && current.handle
+        ? {
+            handle: current.handle,
+            positions: dragPositions(
+              current.start,
+              current.position,
+              current.handle,
+              event.clientX - current.x,
+              width,
+            ),
+          }
+        : tapPositions(current.start, current.position, width)
+    if (next) {
+      commit(handle, next)
+    }
+    // As a native handle would: arrow keys go on from here. Not on press, which would blur again.
+    const input = handle === 'from' ? fromInput : toInput
+    input.current?.focus({ preventScroll: true })
+  }
+
+  const onPressCancel = (event: PointerEvent<HTMLDivElement>) => {
+    if (press.current?.pointerId === event.pointerId) {
+      press.current = null
+      setDragged(null)
     }
   }
 
@@ -179,112 +283,129 @@ export const PhotoDateRangeFilter = ({
 
   return (
     <div className={className}>
-      <div className="mx-2">
-        {/* Room for the marker labels above the chart. */}
-        <div
-          className="relative"
-          style={{ height: CHART_HEIGHT_PX, marginTop: shownMarkers.length > 0 ? 14 : 0 }}
-        >
-          <div aria-hidden className="absolute inset-0 flex items-end">
-            {bins.map((count, index) => {
-              const start = index / BINS
-              const inRange = start + 1 / BINS > positions.from && start < positions.to
-              return (
-                <div
-                  className={`flex-1 rounded-t-[1px] ${inRange ? 'bg-slate-500' : 'bg-slate-300'}`}
-                  // oxlint-disable-next-line react/no-array-index-key -- fixed parts of the scale
-                  key={index}
-                  // Logarithmic: a few photos stay visible next to thousands. The first bar holds
-                  // everything older than the slider spans and is often by far the largest.
-                  style={{
-                    height:
-                      count === 0
-                        ? 0
-                        : Math.max(2, (Math.log1p(count) / Math.log1p(maxCount)) * CHART_HEIGHT_PX),
-                  }}
-                  title={count > 0 ? text.photoCount(count) : undefined}
-                />
-              )
-            })}
+      {/* Chart and track are one target. Its padding reaches behind the year labels, whose row
+          lets presses through next to them: 22px below the track, as above it. */}
+      <div
+        className={`-mb-3.5 touch-pan-y pb-3.5 select-none ${dragged ? 'cursor-grabbing' : 'cursor-pointer'}`}
+        onPointerCancel={onPressCancel}
+        onPointerDown={onPressStart}
+        onPointerMove={onPressMove}
+        onPointerUp={onPressEnd}
+        // Does nothing, but counts as clickable: a browser on a phone would else hand a press near
+        // a year label to that label, as the nearest thing to click.
+        onClick={() => {}}
+      >
+        <div className="mx-2">
+          {/* Room for the marker labels above the chart. */}
+          <div
+            className="relative"
+            style={{ height: CHART_HEIGHT_PX, marginTop: shownMarkers.length > 0 ? 14 : 0 }}
+          >
+            <div aria-hidden className="absolute inset-0 flex items-end">
+              {bins.map((count, index) => {
+                const start = index / BINS
+                const inRange = start + 1 / BINS > positions.from && start < positions.to
+                return (
+                  <div
+                    className={`flex-1 rounded-t-[1px] ${inRange ? 'bg-slate-500' : 'bg-slate-300'}`}
+                    // oxlint-disable-next-line react/no-array-index-key -- fixed parts of the scale
+                    key={index}
+                    // Logarithmic: a few photos stay visible next to thousands. The first bar holds
+                    // everything older than the slider spans and is often by far the largest.
+                    style={{
+                      height:
+                        count === 0
+                          ? 0
+                          : Math.max(
+                              2,
+                              (Math.log1p(count) / Math.log1p(maxCount)) * CHART_HEIGHT_PX,
+                            ),
+                    }}
+                    title={count > 0 ? text.photoCount(count) : undefined}
+                  />
+                )
+              })}
+            </div>
+            {years.map(({ count, position }) => (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2"
+                key={count}
+                style={{
+                  left: percent(position),
+                  backgroundColor:
+                    count === recommendedMaxAgeYears ? RED : 'rgb(148 163 184 / 0.7)',
+                }}
+              />
+            ))}
+            {shownMarkers.map((marker) => (
+              <div
+                className="pointer-events-none absolute inset-y-0 w-0 border-l-2 border-dashed"
+                key={`${marker.date}-${marker.label}`}
+                style={{ left: percent(marker.position), borderColor: marker.color ?? RED }}
+              >
+                <span
+                  className="absolute -top-3.5 -translate-x-1/2 text-[10px] leading-none whitespace-nowrap"
+                  style={{ color: marker.color ?? RED }}
+                >
+                  {marker.label}
+                </span>
+              </div>
+            ))}
           </div>
-          {years.map(({ count, position }) => (
+        </div>
+
+        <div className="relative h-4">
+          <div className="absolute inset-x-2 top-1/2 h-1 -translate-y-1/2 rounded-full bg-slate-200">
             <div
-              aria-hidden
-              className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2"
-              key={count}
+              className="absolute inset-y-0 rounded-full bg-slate-700"
               style={{
-                left: percent(position),
-                backgroundColor: count === recommendedMaxAgeYears ? RED : 'rgb(148 163 184 / 0.7)',
+                left: percent(positions.from),
+                right: percent(1 - positions.to),
               }}
             />
-          ))}
-          {shownMarkers.map((marker) => (
-            <div
-              className="pointer-events-none absolute inset-y-0 w-0 border-l-2 border-dashed"
-              key={`${marker.date}-${marker.label}`}
-              style={{ left: percent(marker.position), borderColor: marker.color ?? RED }}
-            >
-              <span
-                className="absolute -top-3.5 -translate-x-1/2 text-[10px] leading-none whitespace-nowrap"
-                style={{ color: marker.color ?? RED }}
-              >
-                {marker.label}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="relative h-4">
-        <div className="absolute inset-x-2 top-1/2 h-1 -translate-y-1/2 rounded-full bg-slate-200">
-          <div
-            className="absolute inset-y-0 rounded-full bg-slate-700"
-            style={{
-              left: percent(positions.from),
-              right: percent(1 - positions.to),
+          </div>
+          <input
+            aria-label={text.fromHandle}
+            aria-valuetext={shownRange.from ? day(shownRange.from) : text.allDates}
+            className={HANDLE_CLASS}
+            max={1}
+            min={0}
+            onChange={(event) => {
+              trackDrag('from', event.nativeEvent)
             }}
+            ref={(input) => {
+              fromInput.current = input
+              return commitOnRelease('from')(input)
+            }}
+            step={DATE_SLIDER_STEP}
+            type="range"
+            value={positions.from}
+          />
+          <input
+            aria-label={text.toHandle}
+            aria-valuetext={shownRange.to ? day(shownRange.to) : text.allDates}
+            className={HANDLE_CLASS}
+            max={1}
+            min={0}
+            onChange={(event) => {
+              trackDrag('to', event.nativeEvent)
+            }}
+            ref={(input) => {
+              toInput.current = input
+              return commitOnRelease('to')(input)
+            }}
+            step={DATE_SLIDER_STEP}
+            type="range"
+            value={positions.to}
           />
         </div>
-        <input
-          aria-label={text.fromHandle}
-          aria-valuetext={shownRange.from ? day(shownRange.from) : text.allDates}
-          className={HANDLE_CLASS}
-          max={1}
-          min={0}
-          onChange={(event) => {
-            trackDrag('from', event.nativeEvent)
-          }}
-          ref={(input) => {
-            fromInput.current = input
-            return commitOnRelease('from')(input)
-          }}
-          step={STEP}
-          type="range"
-          value={positions.from}
-        />
-        <input
-          aria-label={text.toHandle}
-          aria-valuetext={shownRange.to ? day(shownRange.to) : text.allDates}
-          className={HANDLE_CLASS}
-          max={1}
-          min={0}
-          onChange={(event) => {
-            trackDrag('to', event.nativeEvent)
-          }}
-          ref={(input) => {
-            toInput.current = input
-            return commitOnRelease('to')(input)
-          }}
-          step={STEP}
-          type="range"
-          value={positions.to}
-        />
       </div>
 
-      <div className="relative mx-2 h-4">
+      <div className="pointer-events-none relative mx-2 h-4">
         {years.map(({ count, position }) => (
           <button
-            className={`absolute top-0 -translate-x-1/2 rounded px-0.5 text-[10px] leading-4 whitespace-nowrap hover:underline ${
+            className={`pointer-events-auto absolute top-0 -translate-x-1/2 rounded px-0.5 text-[10px] leading-4 whitespace-nowrap hover:underline ${
               count === recommendedMaxAgeYears
                 ? 'font-semibold text-red-600'
                 : 'text-slate-500 hover:text-slate-900'
