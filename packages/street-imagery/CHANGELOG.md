@@ -1,5 +1,14 @@
 # @osm-editor-kit/street-imagery
 
+## 0.1.0-alpha.11
+
+### Patch Changes
+
+- 85f317e: - **Links with the view inside the photo**: `providerExternalLink(photo, view)` opens Mapillary and Panoramax on the same photo with the same zoom and pan. The new type `PhotoView` holds that view; a view of another photo is ignored. Without a `view` the links stay as they were.
+  - **`rankPhotosLookingAt(place, photos, options)`**: answers "who sees this spot": flat photos within 50 m whose heading points at the place within 35°, and 360° photos within the distance, sorted by nearness and age, each with `bearingToPlace`. Both limits are options, and the age and photo type options work as in `rankPhotosForDirection`.
+- f67cddb: - **Mapilio works in the browser again**: Mapilio fixed the CORS headers of `geo.mapilio.com`, so dots, lines and photos load from any site. `providerById.mapilio` no longer has a `browserUnavailableReason`, `isBrowserAvailableProvider('mapilio')` is `true`, and Mapilio now counts as a default provider, like KartaView and Vegbilder.
+  - **Fewer requests to Mapilio**: `fetchMapilioSequenceItem` asks for each sequence once. Mapilio answers too many requests with HTTP 429, and a panorama tour used to send one request per photo of the sequence.
+
 ## 0.1.0-alpha.10
 
 ### Patch Changes
