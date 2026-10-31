@@ -76,7 +76,7 @@ Rendered inside `MapRoot` next to `MapSelectionHighlight`. Declarative `Source`/
 - **Flat**: narrower wedge (~30°) at static `photo.heading`; no live rotation (except providers
   whose viewer reports yaw — then heading + yaw). If `heading` is null → no indicator.
 - Geometry helper `src/features/map/viewCone.ts`: `viewConeGeoJson(lngLat, bearingDeg, fovDeg,
-radiusMeters)` — hand-rolled sector (no turf dep), unit-tested (bearing 0/90/wraparound at ±180°,
+  radiusMeters)` — hand-rolled sector (no turf dep), unit-tested (bearing 0/90/wraparound at ±180°,
   degenerate fov).
 
 Additionally (nice-to-have, phase A): the existing provider circle layers stay as-is; direction
