@@ -17,7 +17,7 @@ export default defineConfig({
     newlinesBetween: false,
   },
   sortTailwindcss: {
-    stylesheet: 'src/index.css',
+    stylesheet: 'apps/preview/src/index.css',
     functions: ['twMerge', 'twJoin', 'clsx'],
   },
   sortPackageJson: true,
@@ -25,9 +25,11 @@ export default defineConfig({
     '.agents/**',
     '.claude/**',
     '.cursor/**',
-    'dist/**',
+    '**/CHANGELOG.md',
+    '**/dist/**',
+    '**/routeTree.gen.ts',
+    '.changeset/*.md',
     'playwright-report/**',
-    'src/routeTree.gen.ts',
     'test-results/**',
   ],
 })

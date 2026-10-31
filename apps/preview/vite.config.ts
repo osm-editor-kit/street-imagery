@@ -20,8 +20,11 @@ try {
   // node_modules may be absent during config-only checks
 }
 
+// Project Pages live at /<repo>/; local `vite` / `vite preview` stay at `/`.
+const base = process.env.VITE_BASE ?? '/'
+
 export default defineConfig({
-  base: '/street-imagery/',
+  base,
   resolve: {
     // Bun may resolve PSV deps from ~/.bun/install/cache; pin three to the project install.
     dedupe: ['three'],

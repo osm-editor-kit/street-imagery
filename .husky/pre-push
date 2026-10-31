@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+set -e
+
+. "$(dirname -- "$0")/ensure-bun.sh"
+
+# Same check areas as CI (`check-ci`); lint/format may auto-fix. @see package-json-scripts
+bun run check-pre-push
+
+# Wave package changeset coverage: unreleased commits that touch a wave package need a pending
+# changeset. Check only — write the changeset into the commit, see .changeset/README.md.
+bun run packages:changeset -- --check
+
+# Use `git push --no-verify` to skip (sparingly).

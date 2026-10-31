@@ -1,4 +1,5 @@
 import { defineConfig } from 'oxlint'
+import reactHooksJs from 'oxlint-config-react-hooks-js/configs/recommended-latest.json' with { type: 'json' }
 
 export default defineConfig({
   plugins: ['eslint', 'typescript', 'unicorn', 'oxc', 'react'],
@@ -7,13 +8,16 @@ export default defineConfig({
     '.agents/**',
     '.claude/**',
     '.cursor/**',
-    'dist/**',
+    '**/dist/**',
+    '**/routeTree.gen.ts',
     'playwright-report/**',
-    'src/routeTree.gen.ts',
     'test-results/**',
   ],
   rules: {
-    'typescript/switch-exhaustiveness-check': 'error',
+    'typescript/switch-exhaustiveness-check': [
+      'error',
+      { considerDefaultExhaustiveForUnions: true },
+    ],
     'react/unsupported-syntax': 'error',
     'eslint/no-unused-vars': [
       'warn',
@@ -27,7 +31,7 @@ export default defineConfig({
   },
   overrides: [
     {
-      files: ['src/**/*.ts', 'src/**/*.tsx'],
+      files: ['apps/preview/src/**/*.ts', 'apps/preview/src/**/*.tsx'],
       excludeFiles: ['**/*.test.ts', '**/*.test.tsx'],
       jsPlugins: [{ name: 'compat', specifier: 'eslint-plugin-compat' }],
       rules: {
@@ -39,6 +43,13 @@ export default defineConfig({
       rules: {
         'typescript/no-non-null-assertion': 'off',
         'react/rules-of-hooks': 'off',
+      },
+    },
+    {
+      files: ['packages/**/*.tsx'],
+      jsPlugins: [{ name: 'react-hooks-js', specifier: 'eslint-plugin-react-hooks' }],
+      rules: {
+        ...reactHooksJs.rules,
       },
     },
   ],

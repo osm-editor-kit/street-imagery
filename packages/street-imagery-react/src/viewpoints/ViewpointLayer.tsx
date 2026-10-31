@@ -55,13 +55,11 @@ export const ViewpointLayer = ({
   }
   const points: FeatureCollection<Point> = {
     type: 'FeatureCollection',
-    features: viewpoints.map(
-      (viewpoint): Feature<Point> => ({
-        type: 'Feature',
-        properties: { id: viewpoint.id },
-        geometry: { type: 'Point', coordinates: viewpoint.lngLat },
-      }),
-    ),
+    features: viewpoints.map((viewpoint): Feature<Point> => ({
+      type: 'Feature',
+      properties: { id: viewpoint.id },
+      geometry: { type: 'Point', coordinates: viewpoint.lngLat },
+    })),
   }
   const lineFeature: FeatureCollection<LineString> = {
     type: 'FeatureCollection',

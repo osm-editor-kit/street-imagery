@@ -2,12 +2,7 @@
 
 [install]
 minimumReleaseAge = 432000
-minimumReleaseAgeExcludes = [
-  "typescript",
-  "@typescript/typescript-*",
-  "@osm-editor-kit/street-imagery",
-  "@osm-editor-kit/street-imagery-react",
-]
+minimumReleaseAgeExcludes = ["typescript", "@typescript/typescript-*"]
 
 linker = "isolated"
 globalStore = true

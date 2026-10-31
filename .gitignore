@@ -2,3 +2,5 @@ node_modules
 dist
 .tsbuildinfo-app
 *.local
+.tsbuildinfo*
+**/.package.json.dev-backup

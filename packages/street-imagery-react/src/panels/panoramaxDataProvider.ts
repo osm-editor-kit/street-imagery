@@ -219,7 +219,7 @@ export class PanoramaxDataProvider extends DataProviderBase {
         this.itemRequests.set(id, request)
       }
     }
-    await Promise.all(imageIds.map((id) => this.itemRequests.get(id)))
+    await Promise.all(imageIds.flatMap((id) => this.itemRequests.get(id) ?? []))
     return imageIds.flatMap((id) => this.items.get(id) ?? [])
   }
 

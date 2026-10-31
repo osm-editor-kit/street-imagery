@@ -1,5 +1,5 @@
 {
-  "name": "street-level-imagery-provider-overview",
+  "name": "preview",
   "private": true,
   "type": "module",
   "scripts": {
@@ -7,18 +7,12 @@
     "build": "FORCE_COLOR=1 bun --bun vite build",
     "preview": "FORCE_COLOR=1 bun --bun vite preview",
     "type-check": "tsc --noEmit -p tsconfig.app.json",
-    "lint": "oxlint --fix --fix-dangerously --deny-warnings -c oxlint.config.mjs .",
-    "lint-check": "oxlint --deny-warnings -c oxlint.config.mjs .",
-    "format": "oxfmt --write -c oxfmt.config.mjs .",
-    "format-check": "oxfmt --check -c oxfmt.config.mjs .",
-    "test-run": "vitest run --passWithNoTests src",
-    "check": "bun run --parallel type-check lint format test-run",
-    "check-ci": "bun run --parallel type-check lint-check format-check test-run"
+    "test-run": "vitest run --passWithNoTests src"
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",
-    "@osm-editor-kit/street-imagery": "0.1.0-alpha.11",
-    "@osm-editor-kit/street-imagery-react": "0.1.0-alpha.14",
+    "@osm-editor-kit/street-imagery": "workspace:*",
+    "@osm-editor-kit/street-imagery-react": "workspace:*",
     "@photo-sphere-viewer/core": "^5.15.1",
     "@photo-sphere-viewer/cubemap-adapter": "^5.15.1",
     "@photo-sphere-viewer/cubemap-tiles-adapter": "^5.15.1",
@@ -45,32 +39,21 @@
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@typescript/typescript-darwin-arm64": "^7.0.2",
     "@vitejs/plugin-react": "^6.1.1",
     "browserslist": "^4.29.3",
     "browserslist-to-esbuild": "^2.1.1",
     "bun-types": "^1.4.2",
-    "eslint-plugin-compat": "^7.0.2",
     "jsdom": "^27.4.0",
     "oxc-transform-react": "^0.152.0",
-    "oxfmt": "0.71.0",
-    "oxlint": "1.86.0",
-    "oxlint-tsgolint": "7.0.2003",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vitest": "^5.0.3"
-  },
-  "optionalDependencies": {
-    "@typescript/typescript-linux-x64": "^7.0.2"
   },
   "browserslist": [
     "defaults",
     "not ie 11",
     "not op_mini all",
     "not kaios > 0"
-  ],
-  "trustedDependencies": [
-    "eslint-plugin-compat"
   ]
 }

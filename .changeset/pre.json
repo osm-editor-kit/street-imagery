@@ -1,0 +1,43 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "@osm-editor-kit/street-imagery": "0.0.0",
+    "@osm-editor-kit/street-imagery-react": "0.0.0"
+  },
+  "changesets": [
+    "date-slider-scale",
+    "gentle-tidy-anchors",
+    "imagery-bbox-helper-reuse",
+    "imagery-compiled-stable-viewport",
+    "imagery-dense-areas-smooth",
+    "imagery-floating-viewer-default-position",
+    "imagery-layers-before-id",
+    "imagery-low-zoom-lines",
+    "imagery-mapillary-cone-direction",
+    "imagery-off-provider-stale-data",
+    "imagery-panoramax-no-widgets",
+    "imagery-photo-cache-limit",
+    "imagery-photo-click-target",
+    "imagery-photo-count-format",
+    "imagery-photo-type-test-once",
+    "imagery-photo-view-links",
+    "imagery-slider-graph-and-free-viewer",
+    "imagery-viewer-panels-entry",
+    "kartaview-small-tiles",
+    "locale-en-de",
+    "location-openers",
+    "mapilio-browser-available",
+    "mapillary-features-look-at",
+    "opener-links-account-date",
+    "panoramax-in-mapillary-viewer",
+    "photo-date-range-filter",
+    "providers-per-entry",
+    "registry-metadata-fix",
+    "selected-map-feature",
+    "sign-groups-age-steps",
+    "street-views-buttons",
+    "streetview-outdoor",
+    "viewpoint-photo-finder"
+  ]
+}

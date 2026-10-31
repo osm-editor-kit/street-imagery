@@ -3,7 +3,8 @@ import { createRouter } from '@tanstack/react-router'
 import { routerSearch } from '@/app/routerSearch'
 import { routeTree } from '@/routeTree.gen'
 
-const BASE_PATH = '/street-imagery'
+// Vite `base` (`/street-imagery/` on GitHub Pages) becomes the router basepath.
+const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '') || '/'
 
 export const queryClient = new QueryClient({
   defaultOptions: {
