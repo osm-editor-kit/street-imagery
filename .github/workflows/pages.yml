@@ -36,7 +36,7 @@ jobs:
         run: cp apps/preview/dist/index.html apps/preview/dist/404.html
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: apps/preview/dist
 
