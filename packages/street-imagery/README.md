@@ -1,16 +1,26 @@
 # `@osm-editor-kit/street-imagery`
 
+Street-level imagery for OpenStreetMap editors: fetch photos, sequences and map features from Mapillary, Panoramax and other providers, and turn them into GeoJSON, viewfields, filters and "open in …" links.
+
 > [!NOTE]
-> This package is an **alpha** release and still under active development. APIs may change; install with the npm `alpha` dist-tag.
+> Claude Opus 5.5 wrote and reviewed the code of this package. [@tordans](https://github.com/tordans) specified what it should do and tested and verified its user-facing behavior.
+
+## Install
+
+```bash
+npm install @osm-editor-kit/street-imagery
+```
+
+For TypeScript, also install `maplibre-gl`: the style helpers return MapLibre expression types. It is not needed at runtime.
 
 ## What it does
 
-- Talk to many street-photo providers through one adapter API (Mapillary, Panoramax, KartaView, Mapilio, Bing Streetside, Vegbilder, Google Street View, Apple Look Around, …)
+- Talk to street-photo providers through one adapter API (Mapillary, Panoramax, KartaView, Mapilio, Bing Streetside, Vegbilder; Google Street View and Apple Look Around as links)
 - Normalize photos, sequences, and map features into shared types
 - Fetch by map bbox or MVT tiles
 - Build GeoJSON for map layers (points, sequences, viewfields)
 - Filter by date and photo type (flat / panorama)
-- Helpers for deep links, nearby-photo grouping, and thumbnails
+- Helpers for deep links and thumbnails
 
 For MapLibre React layers, use `@osm-editor-kit/street-imagery-react`.
 
@@ -123,3 +133,7 @@ if (opener)
 ```
 
 **infra3D** has no public coverage data, so it is an opener only, and the package knows no projects: the host names them, `createStreetImageryConfig({ infra3d: { projects: [{ uid, label, bbox }] } })`. Each project gets its own opener with that `label`. With a `bbox` the opener covers only that area. `buildInfra3dUrl` builds the three link kinds (`jumpTo`, `lookAt`, `imageKey` with optional `pointTo`; they exclude each other). The opener uses `lookAt` without a height: infra3D then looks at the ground at that point from the nearest image (within 100 m). Only people with an infra3D account get past its login page. Its openers have `requiresAccount: true` (all others `false`), so a host can mark the link, e.g. with a lock icon.
+
+## License
+
+MIT

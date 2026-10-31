@@ -25,7 +25,7 @@ import type {
   NormalizedSequence,
 } from '@osm-editor-kit/street-imagery'
 import {
-  adapterById,
+  getProviderAdapter,
   bboxIntersects,
   fetchedSequencesMinZoom,
   providerById,
@@ -310,7 +310,7 @@ const PhotoProviderLayer = ({
   beforeId,
   minZoom,
 }: ProviderLayerProps) => {
-  const adapter = adapterById[providerId]
+  const adapter = getProviderAdapter(providerId)
   const meta = providerById[providerId]
   const photosMinZoom = Math.max(meta.minZoom, minZoom)
   const fetchedLinesMinZoom = fetchedSequencesMinZoom(providerId)
@@ -691,7 +691,7 @@ export const StreetLevelImagerySourcesAndLayers = ({
 
   // The shown photo's sequence goes below the lowest photo layer, so dots stay on top of it.
   const firstPhotoProvider = providers.find(
-    (id) => providerById[id].kind === 'photo' && adapterById[id]?.fetchPhotos,
+    (id) => providerById[id].kind === 'photo' && getProviderAdapter(id)?.fetchPhotos,
   )
   const sequenceBeforeId = firstPhotoProvider
     ? showViewfields

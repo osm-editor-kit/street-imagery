@@ -1,11 +1,19 @@
 # `@osm-editor-kit/street-imagery-react`
 
+React and MapLibre layers, hooks and photo viewers for street-level imagery (Mapillary, Panoramax), on top of `@osm-editor-kit/street-imagery`. For apps that show photos on a `react-map-gl` map.
+
 > [!NOTE]
-> This package is an **alpha** release and still under active development. APIs may change; install with the npm `alpha` dist-tag.
+> Claude Opus 5.5 wrote and reviewed the code of this package. [@tordans](https://github.com/tordans) specified what it should do and tested and verified its user-facing behavior.
+
+## Install
+
+```bash
+npm install @osm-editor-kit/street-imagery-react
+```
+
+Peer dependencies to install as well: `@osm-editor-kit/street-imagery`, `react`, `react-dom`, `maplibre-gl`, `react-map-gl`, `@tanstack/react-query`, `zustand`, `mapillary-js`. `@panoramax/web-viewer` is optional (see below). Wrap your app in a TanStack `QueryClientProvider`; the hooks use it.
 
 ## What it does
-
-React + MapLibre UI on top of `@osm-editor-kit/street-imagery`:
 
 - Map sources and layers for photos, sequences, and viewfields
 - Click handling and interactive layer ids
@@ -13,6 +21,7 @@ React + MapLibre UI on top of `@osm-editor-kit/street-imagery`:
 - Lazy viewer panels: Mapillary and Panoramax photos in one viewer (`mapillary-js`)
 - Helpers for selection, thumbnails, and easing the map to a photo
 - Viewpoints + floating photo viewer: suggested views per direction, history, map layer
+- Date range slider, photo details dialog, look at a place and outline detections, texts in English and German
 
 ## Usage
 
@@ -26,6 +35,7 @@ import {
 } from '@osm-editor-kit/street-imagery-react'
 import { createStreetImageryConfig } from '@osm-editor-kit/street-imagery'
 
+// Inside <Map id="main">: the bbox follows the map
 const bbox = useMapViewportBbox('main')
 
 <StreetLevelImagerySourcesAndLayers
@@ -56,7 +66,7 @@ const hits = queryStreetImageryFeatures(event)
 
 **Mapillary:** `createStreetImageryConfig({ mapillaryToken })` or `setStreetImageryConfig` at boot (`@osm-editor-kit/street-imagery`). **Panoramax:** nothing to set up, the Mapillary viewer shows its pictures too (see below).
 
-Also: `useAllProviderPhotos`, `useProviderPhotos` / `useProviderSequences` / `useProviderMapFeatures`, `usePhotoThumbnails`, `resolveSelectedSequence`, `StreetLevelImageryViewCone`, `useViewerBearing` / `useViewerActions`. The panels themselves (`MapillaryPanel`, `PanoramaxPanel`) are in `@osm-editor-kit/street-imagery-react/viewer-panels`; `StreetLevelImageryViewer` loads them on demand, so `mapillary-js` is only loaded when a photo is shown.
+Also: `useAllProviderPhotos`, `useProviderPhotos` / `useProviderSequences` / `useProviderMapFeatures`, `usePhotoThumbnail` / `usePhotoFullUrl`, `resolveSelectedSequence`, `StreetLevelImageryViewCone`, `useViewerBearing` / `useViewerActions`. The panels themselves (`MapillaryPanel`, `PanoramaxPanel`) are in `@osm-editor-kit/street-imagery-react/viewer-panels`; `StreetLevelImageryViewer` loads them on demand, so `mapillary-js` is only loaded when a photo is shown.
 
 ### Panoramax in the Mapillary viewer
 
@@ -158,6 +168,8 @@ const [view, setView] = useState<PhotoView | null>(null)
 
 `onViewerView` runs when the view has stopped moving and when the photo changes, not during a drag, for Mapillary (`x`, `y`, `zoom`) and Panoramax (`heading`, `pitch`, `zoom`). A view of another photo is ignored by the link. What a link shows also depends on the size of the window it opens in. Panoramax in the default panel: the viewers differ, so direction and height of the view carry over, not every pixel.
 
+**Styles:** the viewer panels import the CSS of `mapillary-js`, so your bundler must handle CSS imports.
+
 **Tailwind:** components use Tailwind classes. Tailwind does not scan `node_modules`, so add to your CSS:
 
 ```css
@@ -201,6 +213,13 @@ const { data: detections } = useMapillaryImageDetections(photo.photoId, {
 Keep the selected sign (`featureId`) and its shown photo in your own state or URL:
 
 ```tsx
+import { targetImageToPhoto } from '@osm-editor-kit/street-imagery'
+import {
+  MapillaryFeatureBar,
+  SelectedMapFeatureLayer,
+  useSelectedMapillaryFeature,
+} from '@osm-editor-kit/street-imagery-react'
+
 const { data, shownImage, firstImage } = useSelectedMapillaryFeature({
   featureId,
   shownPhotoId, // the photo the viewer shows now
@@ -220,6 +239,8 @@ A click on a sign dot: `queryStreetImageryFeatures(event).find((hit) => hit.kind
 `PhotoDateRangeFilter` is the date filter of iD's photo panel as a controlled component: one slider with two handles on a scale that gives recent years more room. It works on plain `{ from?, to? }` days (`YYYY-MM-DD`), the same `DateRange` the layers take as `filter.date`.
 
 ```tsx
+import { PhotoDateRangeFilter, useAllProviderPhotos } from '@osm-editor-kit/street-imagery-react'
+
 const { photos } = useAllProviderPhotos(providers, bbox, zoom) // no date: all photos in view
 
 <PhotoDateRangeFilter
@@ -235,11 +256,20 @@ const { photos } = useAllProviderPhotos(providers, bbox, zoom) // no date: all p
 
 A click or tap on the chart moves the nearer handle to that exact place, and a press on the chart can go on as a drag. Handles on the same spot come apart in the direction of the drag. Handles stay separate targets for mouse and touch, at least 44px high and wide, and a vertical swipe on a phone scrolls the page. A handle at its end means no limit, so the left end also shows photos older than the slider spans (`maxYears`, default 10). The scale itself is in the core package (`dateSliderPosition`, `dateSliderBins`, …) for a host that draws its own chart. The texts are in `messages.dateFilter`.
 
+## Language
+
+Texts and dates are English by default. `StreetImageryLocaleProvider` sets `locale` (`'en'` or `'de'`) and can replace single texts with `messages`.
+
+```tsx
+<StreetImageryLocaleProvider locale="de">{children}</StreetImageryLocaleProvider>
+```
+
 ## Pick a place on the map to open elsewhere
 
 A button arms a location opener (see `@osm-editor-kit/street-imagery`), the next map click opens the clicked place in that service and disarms; Escape cancels.
 
 ```tsx
+import { getLocationOpeners } from '@osm-editor-kit/street-imagery'
 import {
   LocationPickOnMap,
   useArmedLocationOpenerId,
@@ -279,3 +309,7 @@ import { PHOTO_DETAILS_LABELS, PhotoDetailsDialog } from '@osm-editor-kit/street
 ```
 
 `viewerPhoto` is what `onViewerPhoto` of the viewer gives (Mapillary, Panoramax).
+
+## License
+
+MIT

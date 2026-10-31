@@ -8,7 +8,7 @@ export { NORWAY_BBOX, providerById, PROVIDERS, type ProviderMeta } from './meta'
  * data; it lives in its own entry (`@osm-editor-kit/street-imagery/providers/mapillary` …), so an
  * app bundles only the providers it registers. A provider without an adapter shows no map data.
  */
-export const adapterById: Partial<Record<ProviderId, ProviderAdapter>> = {}
+const adapterById: Partial<Record<ProviderId, ProviderAdapter>> = {}
 
 /** Call once at boot, before the first render, with the adapters of the providers you use. */
 export const registerProviderAdapters = (adapters: readonly ProviderAdapter[]): void => {
@@ -16,6 +16,10 @@ export const registerProviderAdapters = (adapters: readonly ProviderAdapter[]): 
     adapterById[adapter.id] = adapter
   }
 }
+
+/** The registered adapter of a provider; `undefined` when the host did not register one. */
+export const getProviderAdapter = (providerId: ProviderId): ProviderAdapter | undefined =>
+  adapterById[providerId]
 
 export const DEFAULT_PROVIDER_IDS: ProviderId[] = PROVIDERS.filter(
   (provider) => provider.kind === 'photo' && provider.defaultEnabled !== false,

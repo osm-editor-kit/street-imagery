@@ -68,24 +68,30 @@
     },
     "packages/street-imagery": {
       "name": "@osm-editor-kit/street-imagery",
-      "version": "0.1.0-alpha.11",
+      "version": "1.0.0",
       "dependencies": {
         "@mapbox/vector-tile": "^3.0.0",
+        "@types/geojson": "^7946.0.16",
         "date-fns": "^4.4.0",
         "pbf": "^5.1.0",
       },
       "devDependencies": {
-        "@types/geojson": "^7946.0.16",
         "bun-types": "^1.2.20",
         "maplibre-gl": "^6.7.0",
         "tsup": "^8.5.1",
         "typescript": "^7.0.0",
         "vite": "^8.3.5",
       },
+      "peerDependencies": {
+        "maplibre-gl": "^6",
+      },
+      "optionalPeers": [
+        "maplibre-gl",
+      ],
     },
     "packages/street-imagery-react": {
       "name": "@osm-editor-kit/street-imagery-react",
-      "version": "0.1.0-alpha.14",
+      "version": "1.0.0",
       "devDependencies": {
         "@babel/core": "^7.29.7",
         "@panoramax/web-viewer": "^5",

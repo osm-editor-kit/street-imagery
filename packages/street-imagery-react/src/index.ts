@@ -16,12 +16,21 @@ export {
   streetImageryInteractiveLayerIds,
   type StreetImageryClickFeature,
 } from './streetImageryClick'
-export * from './hooks/useAllProviderMapFeatures'
-export * from './hooks/useAllProviderPhotos'
-export * from './hooks/useMapViewportBbox'
-export * from './hooks/useProviderData'
-export * from './hooks/usePhotoThumbnails'
-export * from './useViewerStore'
+export { useAllProviderMapFeatures } from './hooks/useAllProviderMapFeatures'
+export { useAllProviderPhotos, type AllProviderPhotosResult } from './hooks/useAllProviderPhotos'
+export { useMapViewportBbox } from './hooks/useMapViewportBbox'
+export {
+  useProviderMapFeatures,
+  useProviderPhotos,
+  useProviderSequences,
+} from './hooks/useProviderData'
+export { usePhotoFullUrl, usePhotoThumbnail } from './hooks/usePhotoThumbnails'
+export {
+  useViewerActions,
+  useViewerBearing,
+  useViewerHfov,
+  useViewerLngLat,
+} from './useViewerStore'
 export {
   FloatingPhotoViewer,
   FloatingViewerInfoButton,
@@ -35,14 +44,36 @@ export {
   type ViewpointLayerProps,
 } from './viewpoints/ViewpointLayer'
 export { viewSuggestionLabel } from './viewpoints/viewDirectionLabels'
-export * from './viewpoints/useViewpointSessionStore'
-export * from './viewpoints/useViewSuggestions'
-export * from './viewpoints/usePhotosLookingAt'
+export {
+  getViewpointSession,
+  useActiveDirectionKey,
+  useCanGoBack,
+  useCanGoForward,
+  useCurrentHistoryEntry,
+  useViewpointLine,
+  useViewpoints,
+  type ViewpointHistoryEntry,
+} from './viewpoints/useViewpointSessionStore'
+export {
+  useViewSuggestions,
+  type ViewSuggestionsOptions,
+  type ViewSuggestionsResult,
+} from './viewpoints/useViewSuggestions'
+export {
+  usePhotosLookingAt,
+  type PhotosLookingAtOptions,
+  type PhotosLookingAtResult,
+} from './viewpoints/usePhotosLookingAt'
 // `MapillaryPanel`, `PanoramaxPanel`, `turnMapillaryViewerTo` …: see the `viewer-panels` entry.
 export type { MapillaryLookAt, MapillaryViewerOutline } from './panels/mapillaryLookAt'
-export * from './mapillary/useMapillaryFeatures'
+export {
+  useMapillaryImageDetections,
+  useMapillaryMapFeatureImages,
+  useMapillaryMapFeaturesNear,
+  useSelectedMapillaryFeature,
+} from './mapillary/useMapillaryFeatures'
 export { LocationPickOnMap, type LocationPickOnMapProps } from './openers/LocationPickOnMap'
-export * from './openers/useLocationPickStore'
+export { useArmedLocationOpenerId, useLocationPickActions } from './openers/useLocationPickStore'
 export {
   SelectedMapFeatureLayer,
   type SelectedMapFeatureLayerProps,

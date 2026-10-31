@@ -1,6 +1,6 @@
 import type { Bbox } from '@osm-editor-kit/street-imagery'
 import {
-  adapterById,
+  getProviderAdapter,
   fetchedSequencesMinZoom,
   providerById,
   providerCoversBbox,
@@ -38,7 +38,7 @@ export const useProviderPhotos = (
   { minZoom = 0 }: ProviderDataOptions = {},
 ) => {
   // No adapter registered for the provider: nothing to load.
-  const adapter = adapterById[providerId]
+  const adapter = getProviderAdapter(providerId)
   const meta = providerById[providerId]
   const enabled =
     meta.kind === 'photo' &&
@@ -65,7 +65,7 @@ export const useProviderSequences = (
   { minZoom = 0 }: ProviderDataOptions = {},
 ) => {
   // No adapter registered for the provider: nothing to load.
-  const adapter = adapterById[providerId]
+  const adapter = getProviderAdapter(providerId)
   const meta = providerById[providerId]
   const sequencesMinZoom = fetchedSequencesMinZoom(providerId)
   const enabled =
@@ -90,7 +90,7 @@ export const useProviderMapFeatures = (
   { minZoom = 0 }: ProviderDataOptions = {},
 ) => {
   // No adapter registered for the provider: nothing to load.
-  const adapter = adapterById[providerId]
+  const adapter = getProviderAdapter(providerId)
   const meta = providerById[providerId]
   const enabled =
     meta.kind === 'mapFeature' &&

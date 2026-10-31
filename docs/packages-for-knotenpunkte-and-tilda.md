@@ -10,7 +10,7 @@ features 18, 19, 26). What stayed in iD: the OSM tag fields and the buttons that
 ## Setup in a host app
 
 ```bash
-bun add @osm-editor-kit/street-imagery@alpha @osm-editor-kit/street-imagery-react@alpha
+bun add @osm-editor-kit/street-imagery @osm-editor-kit/street-imagery-react
 ```
 
 ```ts

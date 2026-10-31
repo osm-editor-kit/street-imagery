@@ -1,5 +1,18 @@
 # @osm-editor-kit/street-imagery
 
+## 1.0.0
+
+### Major Changes
+
+- First stable release. Stable API for fetching and normalizing street-level imagery (Mapillary, Panoramax, KartaView, Mapilio, Streetside, Vegbilder) with GeoJSON, viewfield, filter and age-color helpers, Mapillary map features and detections, viewpoint photo ranking, and "open in …" links including infra3D.
+
+  Changes since the last alpha:
+
+  - The public API is now an explicit list of named exports.
+  - `adapterById` is replaced by `getProviderAdapter(id)`.
+  - `maplibre-gl` is an optional peer dependency, needed for the types.
+  - Removed from the public API: `AGE_BANDS`, `AGE_STEP_COLORS`, `DATE_SLIDER_MAX_YEARS`, `DEFAULT_PROVIDER_IDS`, `FLAT_VIEWFIELD_FOV_DEG`, `INFRA3D_EDIT_URL`, `MAPILLARY_BATCH_SIZE`, `MAPILLARY_BBOX_MAX_DEGREES`, `MAPILLARY_ICON_BASE_URL`, `MAPILLARY_RADIUS_MAX_LIMIT`, `MAPILLARY_RADIUS_MAX_METERS`, `MapillaryGraphImage`, `MvtLayers`, `NORWAY_BBOX`, `PANO_VIEWFIELD_FOV_DEG`, `PointOnLine`, `ProviderLocationLinkOptions`, `STREETSIDE_NEARBY_LIMIT`, `StreetViewMetadataResponse`, `VIEWFIELD_MAX_FEATURES`, `VIEW_SHAPE_FULL_SIZE_ZOOM`, `ageBandStarts`, `ageStepOf`, `buildStreetsidePreviewUrl`, `clampZoom`, `clearTileCache`, `collectSettledTiles`, `compareTargetImages`, `dateFnsLocale`, `decodeDetectionOutline`, `dedupeNearbyPhotos`, `fetchMapFeatureDetections`, `fetchMapilioFullUrl`, `fetchMapilioSequenceItem`, `fetchMapilioThumbnail`, `fetchMapillaryImagesNearPoint`, `fetchMapillaryMapFeature`, `fetchMapillaryMvtTiles`, `fetchMapillaryThumbnail`, `fetchMvt`, `fetchPanoramaxThumbnail`, `fetchTileCached`, `flatViewfieldTriangle`, `formatRelativeAge`, `getInfra3dProjectUid`, `getInfra3dProjects`, `getTileCacheKey`, `humanizeMapillaryValue`, `infra3dOpeners`, `isNullIslandTile`, `isSignValue`, `latToTileY`, `lonToTileX`, `mapFeatureGroupIds`, `mapillaryGraphGet`, `mapillaryLookAtUrl`, `mapillaryTagKeyLabel`, `mapillaryTagKeysOf`, `mapillaryTileUrl`, `normalizeBearing`, `normalizeDateRange`, `normalizeMapillaryGraphImage`, `normalizeMapillaryImageDetails`, `parseMapillaryTagKey`, `peekStreetImageryConfig`, `photoMatchesPhotoTypes`, `photoTypesFilter`, `pointLngLat`, `preferredMapillaryImageId`, `providerLocationLink`, `resolvePhotoFullUrl`, `scorePhotoForDirection`, `sequenceGroupKey`, `signGroupIds`, `signName`, `splitMapillaryImageIds`, `streetViewLookAtUrl`, `tileBbox`, `tileToLat`, `tileToLon`, `tilesForBbox`, `viewDirections`.
+
 ## 0.1.0-alpha.12
 
 ### Patch Changes

@@ -12,10 +12,10 @@ and [`@osm-editor-kit/street-imagery-react`](https://npmx.dev/package/@osm-edito
 on npm · **Live preview:** [osm-editor-kit.github.io/street-imagery](https://osm-editor-kit.github.io/street-imagery/)
 
 > [!NOTE]
-> The packages are **alpha** releases. APIs may change. Install them with the npm `alpha` dist-tag.
+> Claude Opus 5.5 wrote and reviewed the code of these packages. [@tordans](https://github.com/tordans) specified what they should do and tested and verified their user-facing behavior.
 
 ```bash
-bun add @osm-editor-kit/street-imagery@alpha @osm-editor-kit/street-imagery-react@alpha
+bun add @osm-editor-kit/street-imagery @osm-editor-kit/street-imagery-react
 ```
 
 This is a Bun-workspaces monorepo:
@@ -42,8 +42,8 @@ bun run build:packages
 cd packages/street-imagery && bun pm pack --destination ../../.local
 cd ../street-imagery-react && bun pm pack --destination ../../.local
 # in the app:
-bun add @osm-editor-kit/street-imagery@file:/absolute/path/to/.local/osm-editor-kit-street-imagery-0.1.0-alpha.12.tgz
-bun add @osm-editor-kit/street-imagery-react@file:/absolute/path/to/.local/osm-editor-kit-street-imagery-react-0.1.0-alpha.15.tgz
+bun add @osm-editor-kit/street-imagery@file:/absolute/path/to/.local/osm-editor-kit-street-imagery-1.0.0.tgz
+bun add @osm-editor-kit/street-imagery-react@file:/absolute/path/to/.local/osm-editor-kit-street-imagery-react-1.0.0.tgz
 ```
 
 Bun caches a `file:` tarball by its path. After repacking, run `bun remove` and `bun add` again in

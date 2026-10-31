@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { providerExternalLink } from '../../viewer/externalLinks'
 import { providerById } from '../meta'
 import type { NormalizedPhoto } from '../model'
-import { adapterById } from '../registry'
+import { getProviderAdapter } from '../registry'
 import { encodeLookAroundMvs, lookAroundDeepLink } from './lookaround'
 
 describe('encodeLookAroundMvs', () => {
@@ -43,7 +43,7 @@ describe('lookaround provider', () => {
     expect(providerById.lookaround.kind).toBe('photo')
     expect(providerById.lookaround.clickOnly).toBe(true)
     expect(providerById.lookaround.defaultEnabled).toBe(false)
-    expect(adapterById.lookaround).toBeUndefined()
+    expect(getProviderAdapter('lookaround')).toBeUndefined()
   })
 })
 

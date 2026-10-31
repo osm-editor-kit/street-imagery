@@ -122,18 +122,8 @@ async function npmVersionExists(name: string, version: string): Promise<boolean 
   return 'unknown'
 }
 
-function preModeActive() {
-  return existsSync(join(ROOT, '.changeset', 'pre.json'))
-}
-
 async function checkGlobal(): Promise<Issue[]> {
   const issues: Issue[] = []
-  if (!preModeActive()) {
-    issues.push({
-      message: 'Changesets is not in alpha prerelease mode',
-      fix: 'bunx changeset pre enter alpha',
-    })
-  }
   const whoami = await runAsync('npm', ['whoami'])
   if (whoami.status !== 0) {
     issues.push({
@@ -160,16 +150,16 @@ async function checkPackage(
       fix: `Edit ${dir}/package.json — remove "private": true (wave packages must be public)`,
     })
   }
-  if (!version.includes('-alpha')) {
+  if (!/^\d+\.\d+\.\d+$/.test(version)) {
     issues.push({
-      message: `version "${version}" is not an alpha prerelease`,
+      message: `version "${version}" is not a stable release`,
       fix: 'Land package commits with a changeset, then re-run bun run packages:release',
     })
   }
-  if (pkg.publishConfig?.tag !== 'alpha') {
+  if (pkg.publishConfig?.tag !== undefined && pkg.publishConfig.tag !== 'latest') {
     issues.push({
-      message: 'publishConfig.tag is not "alpha"',
-      fix: `Set publishConfig.tag to "alpha" in ${dir}/package.json`,
+      message: `publishConfig.tag is "${pkg.publishConfig.tag}", stable releases go to "latest"`,
+      fix: `Remove publishConfig.tag from ${dir}/package.json`,
     })
   }
   if (pkg.publishConfig?.access !== 'public') {
@@ -323,7 +313,7 @@ function commitVersionBumps() {
     env,
   })
   if (add.status !== 0) throw new Error(`git add failed:\n${add.stderr || add.stdout}`)
-  const commit = spawnSync('git', ['commit', '-m', 'Chore: version packages for alpha publish'], {
+  const commit = spawnSync('git', ['commit', '-m', 'Chore: version packages for publish'], {
     cwd: ROOT,
     encoding: 'utf8',
     env,
@@ -377,7 +367,7 @@ function notifyHuman(message: string) {
 
 async function publishReady(ready: PackageReport[], flags: { yes: boolean; dryRun: boolean }) {
   if (flags.dryRun) {
-    p.outro(pc.dim(`Dry run — would publish ${ready.length} package(s) to dist-tag alpha.`))
+    p.outro(pc.dim(`Dry run — would publish ${ready.length} package(s) to dist-tag latest.`))
     return
   }
 
@@ -399,7 +389,7 @@ async function publishReady(ready: PackageReport[], flags: { yes: boolean; dryRu
   let proceed = flags.yes
   if (!proceed) {
     const answer = await p.confirm({
-      message: `Publish ${ready.length} ready package(s) to npm dist-tag ${pc.cyan('alpha')}?`,
+      message: `Publish ${ready.length} ready package(s) to npm dist-tag ${pc.cyan('latest')}?`,
       initialValue: false,
     })
     if (p.isCancel(answer)) {
@@ -433,7 +423,7 @@ async function publishReady(ready: PackageReport[], flags: { yes: boolean; dryRu
       pack.status === 0 && tarball
         ? await runAsync(
             'npm',
-            ['publish', join(packDir, tarball), '--access', 'public', '--tag', 'alpha'],
+            ['publish', join(packDir, tarball), '--access', 'public', '--tag', 'latest'],
             { cwd, inherit: true },
           )
         : { ...pack, status: pack.status || 1 }
@@ -449,7 +439,7 @@ async function publishReady(ready: PackageReport[], flags: { yes: boolean; dryRu
     p.log.success(`Published ${label}`)
   }
 
-  p.note(ready.map((r) => `bun add ${r.name}@alpha`).join('\n'), 'Install in consumers')
+  p.note(ready.map((r) => `bun add ${r.name}@${r.version}`).join('\n'), 'Install in consumers')
   p.outro(pc.green('Done. Push the version-bump commit (git push).'))
 }
 

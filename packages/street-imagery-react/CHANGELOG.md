@@ -1,5 +1,21 @@
 # @osm-editor-kit/street-imagery-react
 
+## 1.0.0
+
+### Major Changes
+
+- First stable release. Stable React and MapLibre API for street-level imagery: photo, sequence and sign layers, Mapillary and Panoramax viewers, viewpoint suggestions with a floating viewer, a date range slider and a photo details dialog.
+
+  Changes since the last alpha:
+
+  - The public API is now an explicit list of named exports.
+  - Removed from the public API: `previousDataWhile`.
+
+### Patch Changes
+
+- Updated dependencies
+  - @osm-editor-kit/street-imagery@1.0.0
+
 ## 0.1.0-alpha.15
 
 ### Patch Changes
