@@ -118,6 +118,17 @@ For a free window over the whole page, use the viewport as container and let the
 
 `position="fixed"` (default `absolute`) needs an ancestor without `transform` or `filter`, and a stacking order that puts the box above the page. `minVisibleShare` (0–1) never lets the box go over the top edge, because the header is what moves it. The limit also holds when the box or the container changes size, and a minimized viewer stays within reach. Without `minVisibleShare` the box keeps 8px from the right and bottom edge.
 
+For a link that opens the same photo with the same zoom and pan, keep the view the viewer reports and pass it to `providerExternalLink`:
+
+```tsx
+const [view, setView] = useState<PhotoView | null>(null)
+
+<StreetLevelImageryViewer onViewerView={setView} … />
+<a href={providerExternalLink(photo, view)}>Open on Mapillary</a>
+```
+
+`onViewerView` runs when the view has stopped moving and when the photo changes, not during a drag, for Mapillary (`x`, `y`, `zoom`) and Panoramax (`heading`, `pitch`, `zoom`). A view of another photo is ignored by the link. What a link shows also depends on the size of the window it opens in. Panoramax in the default panel: the viewers differ, so direction and height of the view carry over, not every pixel.
+
 **Tailwind:** components use Tailwind classes. Tailwind does not scan `node_modules`, so add to your CSS:
 
 ```css

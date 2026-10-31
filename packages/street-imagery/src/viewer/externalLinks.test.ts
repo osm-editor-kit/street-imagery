@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 import { createStreetImageryConfig, setStreetImageryConfig } from '../config'
 import type { NormalizedPhoto } from '../providers/model'
-import { providerExternalLink, providerLocationLink } from './externalLinks'
+import { providerExternalLink, providerLocationLink, type PhotoView } from './externalLinks'
 
 beforeAll(() => {
   setStreetImageryConfig(
@@ -25,6 +25,71 @@ describe('providerExternalLink', () => {
   it('builds a Google Maps panorama deep link from the photo viewpoint', () => {
     expect(providerExternalLink(streetViewPhoto)).toBe(
       'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=37.421755,-122.0838',
+    )
+  })
+})
+
+describe('providerExternalLink with a view', () => {
+  const mapillaryPhoto: NormalizedPhoto = {
+    ...streetViewPhoto,
+    providerId: 'mapillary',
+    photoId: '1186492701832966',
+  }
+  const panoramaxPhoto: NormalizedPhoto = {
+    ...streetViewPhoto,
+    providerId: 'panoramax',
+    photoId: '3d2cc5ed-741a-4617-ac2f-1b46343e00d6',
+  }
+  const mapillaryView: PhotoView = {
+    providerId: 'mapillary',
+    photoId: mapillaryPhoto.photoId,
+    x: 0.526276448583614,
+    y: 0.5141973155080891,
+    zoom: 2.7,
+  }
+  const panoramaxView: PhotoView = {
+    providerId: 'panoramax',
+    photoId: panoramaxPhoto.photoId,
+    heading: 123.456,
+    pitch: -5.5,
+    zoom: 59.6,
+  }
+
+  it('adds x, y and zoom to a Mapillary link, as mapillary.com writes them', () => {
+    expect(providerExternalLink(mapillaryPhoto, mapillaryView)).toBe(
+      'https://www.mapillary.com/app/?pKey=1186492701832966&focus=photo&x=0.526276&y=0.514197&zoom=2.7',
+    )
+  })
+
+  it('builds a Panoramax link with xyz, as its viewer writes it', () => {
+    expect(providerExternalLink(panoramaxPhoto, panoramaxView)).toBe(
+      'https://api.panoramax.xyz/?focus=pic&pic=3d2cc5ed-741a-4617-ac2f-1b46343e00d6&xyz=123.46/-5.5/60',
+    )
+  })
+
+  it('keeps the plain link without a view', () => {
+    const plainMapillary = 'https://www.mapillary.com/app/?pKey=1186492701832966&focus=photo'
+    expect(providerExternalLink(mapillaryPhoto)).toBe(plainMapillary)
+    expect(providerExternalLink(mapillaryPhoto, null)).toBe(plainMapillary)
+    expect(providerExternalLink(panoramaxPhoto)).toBe(
+      'https://api.panoramax.xyz/#pic=3d2cc5ed-741a-4617-ac2f-1b46343e00d6&focus=pic',
+    )
+  })
+
+  it('ignores the view of another photo', () => {
+    const stale: PhotoView = { ...mapillaryView, photoId: 'the-photo-before' }
+    expect(providerExternalLink(mapillaryPhoto, stale)).toBe(providerExternalLink(mapillaryPhoto))
+  })
+
+  it('ignores the view of another provider', () => {
+    expect(
+      providerExternalLink(panoramaxPhoto, { ...mapillaryView, photoId: panoramaxPhoto.photoId }),
+    ).toBe(providerExternalLink(panoramaxPhoto))
+  })
+
+  it('other providers have no view in their links', () => {
+    expect(providerExternalLink(streetViewPhoto, mapillaryView)).toBe(
+      providerExternalLink(streetViewPhoto),
     )
   })
 })

@@ -1,5 +1,5 @@
 import { getStreetImageryConfig, providerExternalLink } from '@osm-editor-kit/street-imagery'
-import type { NormalizedPhoto } from '@osm-editor-kit/street-imagery'
+import type { NormalizedPhoto, PhotoView } from '@osm-editor-kit/street-imagery'
 import 'mapillary-js/dist/mapillary.css'
 
 import {
@@ -12,7 +12,8 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import type { StreetImageryPhotoSelection } from '../types'
 import { useViewerActions } from '../useViewerStore'
 import { PanoramaxDataProvider } from './panoramaxDataProvider'
-import { panoramaxPhotoFromItem } from './panoramaxItem'
+import { panoramaxItemFieldOfView, panoramaxPhotoFromItem } from './panoramaxItem'
+import { panoramaxZoomLevel, watchMapillaryJsView } from './photoView'
 
 export type PanoramaxPanelProps = {
   photo: NormalizedPhoto
@@ -21,6 +22,11 @@ export type PanoramaxPanelProps = {
   onEaseMapToPoint: (lng: number, lat: number) => void
   /** The shown picture with creator, licence, local capture time and camera. */
   onViewerPhoto?: (photo: NormalizedPhoto) => void
+  /**
+   * The view inside the shown photo, after it has stopped moving and when the photo changes. Pass
+   * it to `providerExternalLink` for a link that opens the same view.
+   */
+  onViewerView?: (view: PhotoView) => void
   /**
    * Hide the line with creator and licence. The host must then show both itself, from
    * `onViewerPhoto`.
@@ -37,10 +43,12 @@ export const PanoramaxPanel = ({
   onPhotoSelected,
   onEaseMapToPoint,
   onViewerPhoto,
+  onViewerView,
   hideAttribution = false,
 }: PanoramaxPanelProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<Viewer | null>(null)
+  const dataProviderRef = useRef<PanoramaxDataProvider | null>(null)
   const navigableRef = useRef(false)
   const pendingImageIdRef = useRef<string | null>(null)
   const lastViewerPhotoIdRef = useRef<string | null>(null)
@@ -75,6 +83,7 @@ export const PanoramaxPanel = ({
       const dataProvider = new PanoramaxDataProvider({
         endpoint: `${getStreetImageryConfig().panoramaxApiBase}/api`,
       })
+      dataProviderRef.current = dataProvider
       const viewer = new Viewer({
         container,
         dataProvider,
@@ -179,6 +188,38 @@ export const PanoramaxPanel = ({
       }
     },
     [actions],
+  )
+
+  const emitViewerView = useEffectEvent((view: PhotoView) => onViewerView?.(view))
+  const reportsView = onViewerView !== undefined
+  useEffect(
+    function reportViewInPhoto() {
+      const viewer = viewerRef.current
+      if (!viewer || !reportsView) {
+        return undefined
+      }
+      // In the terms of panoramax.xyz, whose viewer is not this one: same direction and same
+      // height of the picture in view.
+      const read = async (): Promise<PhotoView | null> => {
+        const [image, { bearing, tilt }, fov] = await Promise.all([
+          viewer.getImage(),
+          viewer.getPointOfView(),
+          viewer.getFieldOfView(),
+        ])
+        const item = dataProviderRef.current?.getItem(image.id)
+        return item
+          ? {
+              providerId: 'panoramax',
+              photoId: image.id,
+              heading: bearing,
+              pitch: tilt,
+              zoom: panoramaxZoomLevel(fov, panoramaxItemFieldOfView(item)),
+            }
+          : null
+      }
+      return watchMapillaryJsView(viewer, read, (view) => emitViewerView(view))
+    },
+    [actions, reportsView],
   )
 
   useEffect(

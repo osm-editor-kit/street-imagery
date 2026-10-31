@@ -1,6 +1,6 @@
 import '@panoramax/web-viewer'
 import { getStreetImageryConfig } from '@osm-editor-kit/street-imagery'
-import type { NormalizedPhoto } from '@osm-editor-kit/street-imagery'
+import type { NormalizedPhoto, PhotoView } from '@osm-editor-kit/street-imagery'
 import { useEffect, useEffectEvent, useRef } from 'react'
 import type { StreetImageryPhotoSelection } from '../types'
 import { useViewerActions } from '../useViewerStore'
@@ -12,6 +12,7 @@ import type {
 } from './panoramax-photo-viewer.d'
 import { limitPanningToImage } from './panoramaxLimitPanning'
 import { panoramaxPhotoFromMetadata } from './panoramaxPhotoFromMetadata'
+import { createPhotoViewReporter } from './photoView'
 
 const panoramaxApiEndpoint = () => `${getStreetImageryConfig().panoramaxApiBase}/api`
 
@@ -33,6 +34,11 @@ export type PanoramaxWebViewerPanelProps = {
   /** The shown picture with creator, licence, local capture time and camera. */
   onViewerPhoto?: (photo: NormalizedPhoto) => void
   /**
+   * The view inside the shown photo, after it has stopped moving and when the photo changes. Pass
+   * it to `providerExternalLink` for a link that opens the same view.
+   */
+  onViewerView?: (view: PhotoView) => void
+  /**
    * Leave out the viewer's own widgets: the legend (a bottom drawer in narrow containers), the
    * player and the zoom buttons. The host must then show creator and licence itself, from
    * `onViewerPhoto`. Stepping through a sequence still works with the arrows in the photo.
@@ -52,6 +58,7 @@ export const PanoramaxWebViewerPanel = ({
   onPhotoSelected,
   onEaseMapToPoint,
   onViewerPhoto,
+  onViewerView,
   hideLegend: hideLegendProp = false,
   hideAttribution = false,
 }: PanoramaxWebViewerPanelProps) => {
@@ -212,6 +219,35 @@ export const PanoramaxWebViewerPanel = ({
       }
     },
     [actions, onEaseMapToPoint, onPhotoSelected],
+  )
+
+  const emitViewerView = useEffectEvent((view: PhotoView) => onViewerView?.(view))
+  const reportsView = onViewerView !== undefined
+  useEffect(
+    function reportViewInPhoto() {
+      const viewer = viewerRef.current
+      if (!viewer || !reportsView) {
+        return undefined
+      }
+      const read = async (): Promise<PhotoView | null> => {
+        const psv = viewer.psv
+        const photoId = psv?.getPictureMetadata()?.id
+        if (!psv || !photoId) {
+          return null
+        }
+        const { x, y, z } = psv.getXYZ()
+        return { providerId: 'panoramax', photoId, heading: x, pitch: y, zoom: z }
+      }
+      const reporter = createPhotoViewReporter(read, (view) => emitViewerView(view))
+      viewer.addEventListener('psv:picture-loaded', reporter.viewChanged)
+      viewer.addEventListener('psv:view-rotated', reporter.viewChanged)
+      return () => {
+        reporter.stop()
+        viewer.removeEventListener('psv:picture-loaded', reporter.viewChanged)
+        viewer.removeEventListener('psv:view-rotated', reporter.viewChanged)
+      }
+    },
+    [reportsView],
   )
 
   useEffect(

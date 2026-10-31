@@ -1,5 +1,5 @@
 import { getStreetImageryConfig } from '@osm-editor-kit/street-imagery'
-import type { NormalizedPhoto } from '@osm-editor-kit/street-imagery'
+import type { NormalizedPhoto, PhotoView } from '@osm-editor-kit/street-imagery'
 import 'mapillary-js/dist/mapillary.css'
 
 import {
@@ -17,6 +17,8 @@ import {
   type MapillaryLookAt,
   type MapillaryViewerOutline,
 } from './mapillaryLookAt'
+import { watchMapillaryJsView } from './photoView'
+
 type MapillaryPanelProps = {
   photo: NormalizedPhoto
   groupPhotos: NormalizedPhoto[]
@@ -24,6 +26,11 @@ type MapillaryPanelProps = {
   onEaseMapToPoint: (lng: number, lat: number) => void
   /** Full photo data for each image the viewer shows (incl. native prev/next navigation). */
   onViewerPhoto?: (photo: NormalizedPhoto) => void
+  /**
+   * The view inside the shown photo, after it has stopped moving and when the photo changes. Pass
+   * it to `providerExternalLink` for a link that opens the same view.
+   */
+  onViewerView?: (view: PhotoView) => void
   /** 360° photos: turn the view to this map bearing when `photo` opens (e.g. a suggested view). */
   lookAtBearing?: number | null
   /**
@@ -50,6 +57,7 @@ export const MapillaryPanel = ({
   onPhotoSelected,
   onEaseMapToPoint,
   onViewerPhoto,
+  onViewerView,
   lookAtBearing,
   lookAt,
   outlines,
@@ -225,6 +233,27 @@ export const MapillaryPanel = ({
       }
     },
     [actions],
+  )
+
+  const emitViewerView = useEffectEvent((view: PhotoView) => onViewerView?.(view))
+  const reportsView = onViewerView !== undefined
+  useEffect(
+    function reportViewInPhoto() {
+      const viewer = viewerRef.current
+      if (!viewer || !reportsView) {
+        return undefined
+      }
+      const read = async (): Promise<PhotoView> => {
+        const [image, [x = 0.5, y = 0.5], zoom] = await Promise.all([
+          viewer.getImage(),
+          viewer.getCenter(),
+          viewer.getZoom(),
+        ])
+        return { providerId: 'mapillary', photoId: image.id, x, y, zoom }
+      }
+      return watchMapillaryJsView(viewer, read, (view) => emitViewerView(view))
+    },
+    [actions, reportsView],
   )
 
   useEffect(

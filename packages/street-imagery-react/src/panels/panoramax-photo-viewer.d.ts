@@ -59,6 +59,7 @@ interface PnxPhotoViewerElement extends HTMLElement {
   psv:
     | ({
         getPictureMetadata(): PnxPictureMetadata | null | undefined
+        getXYZ(): { x: number; y: number; z: number }
         resize(): void
         dataHelper: { zoomLevelToFov(level: number): number }
       } & import('./panoramaxLimitPanning').PsvForPanLimit)

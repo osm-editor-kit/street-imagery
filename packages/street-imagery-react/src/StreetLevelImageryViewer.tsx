@@ -1,4 +1,4 @@
-import type { NormalizedPhoto } from '@osm-editor-kit/street-imagery'
+import type { NormalizedPhoto, PhotoView } from '@osm-editor-kit/street-imagery'
 import { lazy, Suspense, type ComponentType } from 'react'
 import { useStreetImageryI18n } from './i18n/StreetImageryLocaleProvider'
 import type { MapillaryLookAt, MapillaryViewerOutline } from './panels/mapillaryLookAt'
@@ -24,6 +24,12 @@ type StreetLevelImageryViewerProps = {
   onEaseMapToPoint: (lng: number, lat: number) => void
   /** Mapillary, Panoramax: full photo data (creator, licence …) for each image the viewer shows. */
   onViewerPhoto?: (photo: NormalizedPhoto) => void
+  /**
+   * Mapillary, Panoramax: the view inside the shown photo (pan and zoom), after it has stopped
+   * moving and when the photo changes. Pass it to `providerExternalLink` for a link that opens the
+   * same view on the provider's site.
+   */
+  onViewerView?: (view: PhotoView) => void
   /** Mapillary 360° photos: initial view bearing (e.g. a suggested view direction). */
   lookAtBearing?: number | null
   /** Mapillary: turn and zoom to a place (sign, traffic light, junction); wins over `lookAtBearing`. */
@@ -58,6 +64,7 @@ export const StreetLevelImageryViewer = ({
   onPhotoSelected,
   onEaseMapToPoint,
   onViewerPhoto,
+  onViewerView,
   lookAtBearing,
   lookAt,
   outlines,
@@ -76,6 +83,7 @@ export const StreetLevelImageryViewer = ({
           lookAtBearing={lookAtBearing}
           outlines={outlines}
           onViewerPhoto={onViewerPhoto}
+          onViewerView={onViewerView}
           photo={photo}
         />
       </Suspense>
@@ -90,6 +98,7 @@ export const StreetLevelImageryViewer = ({
           groupPhotos={groupPhotos}
           hideAttribution={hideAttribution}
           onViewerPhoto={onViewerPhoto}
+          onViewerView={onViewerView}
           onEaseMapToPoint={onEaseMapToPoint}
           onPhotoSelected={onPhotoSelected}
           photo={photo}

@@ -52,6 +52,10 @@ const orientation = (item: PanoramaxItem) => item.properties?.['pers:interior_or
 export const isPanoramaxItemSpherical = (item: PanoramaxItem) =>
   orientation(item)?.field_of_view === 360
 
+/** Horizontal field of view in degrees. */
+export const panoramaxItemFieldOfView = (item: PanoramaxItem): number =>
+  orientation(item)?.field_of_view ?? DEFAULT_FIELD_OF_VIEW_DEG
+
 /** Width and height in pixels; a guess when the picture does not state them. */
 export const panoramaxItemSize = (item: PanoramaxItem): [number, number] =>
   orientation(item)?.sensor_array_dimensions ?? (isPanoramaxItemSpherical(item) ? [2, 1] : [4, 3])
