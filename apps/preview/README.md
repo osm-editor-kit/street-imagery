@@ -1,5 +1,7 @@
 # Street-Level Imagery Provider Overview
 
+The preview of the [street-imagery packages](../../README.md), and the test bed for both. It is live at [osm-editor-kit.github.io/street-imagery](https://osm-editor-kit.github.io/street-imagery/).
+
 A meta-catalog of street-level imagery providers on one full-screen map. Compare where [Mapillary](https://www.mapillary.com), [Panoramax](https://panoramax.xyz), [KartaView](https://kartaview.org), [Mapilio](https://mapilio.com), [Bing Streetside](https://www.bing.com/maps), [Vegbilder](https://vegbilder.atlas.vegvesen.no), [Google Street View](https://www.google.com/maps), and [Apple Look Around](https://www.apple.com/maps/) have coverage, inspect individual photos, and share exactly what you see via the URL.
 
 ## What you can do
@@ -27,30 +29,32 @@ A meta-catalog of street-level imagery providers on one full-screen map. Compare
 | Map features overlay (POIs etc.)      |    ✅     |         —          |     —     |    —    |        —         |     —     |         —          |         —         |
 | Minimum zoom for data                 |    12     | 15 (lines from 10) |    12     |   14    |        14        |    14     |   click metadata   |    click link     |
 
-Only Mapillary and Panoramax are enabled by default; the other providers are one click away. The Mapillary signs and map-features overlays are separate toggles (off by default — they are dense enough to bury the photo layers). Google Street View is click-only (no map dots or in-app imagery): without a key it is just an "Open in Google Street View" button; with `GOOGLE_MAPS_API_KEY` in `src/config.ts` (a restricted browser key with the Street View Static API enabled) it gets a checkbox that checks coverage through the Street View Static metadata API when you click the map, and the button opens the panorama turned to the place. Bing Streetside is an open-only button too unless `BING_MAPS_KEY` is set in `src/config.ts`; with a key it becomes a map overlay (Microsoft issues no new Bing Maps keys, existing enterprise keys work until June 30, 2028). Apple Look Around and infra3D are open-only buttons: neither publishes a coverage listing, so there is nothing to draw on the map. Apple opens `maps.apple.com/look-around` (no API key); links that still carry `lookaround` in `providers` keep the click card, with a MapKit JS preview when `VITE_APPLE_MAPKIT_TOKEN` is set. infra3D gets one button per project listed in `INFRA3D_PROJECTS` in `src/config.ts` (id and name; right now the Berlin project with the drives of 2025 and 2021/22) and needs an infra3D account. Full Look Around coverage dots are blocked without an official listing API — see [docs/lookaround-coverage-spike.md](docs/lookaround-coverage-spike.md). Panoramax traffic signs are not available: the public Panoramax MVT endpoint only exposes `pictures` / `sequences` layers, and the iD editor does not implement a Panoramax signs overlay either — see [docs/id-provider-research.md](docs/id-provider-research.md).
+Only Mapillary and Panoramax are enabled by default; the other providers are one click away. The Mapillary signs and map-features overlays are separate toggles (off by default — they are dense enough to bury the photo layers). Google Street View is click-only (no map dots or in-app imagery): without a key it is just an "Open in Google Street View" button; with `GOOGLE_MAPS_API_KEY` in `src/config.ts` (a restricted browser key with the Street View Static API enabled) it gets a checkbox that checks coverage through the Street View Static metadata API when you click the map, and the button opens the panorama turned to the place. Bing Streetside is an open-only button too unless `BING_MAPS_KEY` is set in `src/config.ts`; with a key it becomes a map overlay (Microsoft issues no new Bing Maps keys, existing enterprise keys work until June 30, 2028). Apple Look Around and infra3D are open-only buttons: neither publishes a coverage listing, so there is nothing to draw on the map. Apple opens `maps.apple.com/look-around` (no API key); links that still carry `lookaround` in `providers` keep the click card, with a MapKit JS preview when `VITE_APPLE_MAPKIT_TOKEN` is set. infra3D gets one button per project listed in `INFRA3D_PROJECTS` in `src/config.ts` (id and name; right now the Berlin project with the drives of 2025 and 2021/22) and needs an infra3D account. Full Look Around coverage dots are blocked without an official listing API — see [docs/lookaround-coverage-spike.md](../../docs/lookaround-coverage-spike.md). Panoramax traffic signs are not available: the public Panoramax MVT endpoint only exposes `pictures` / `sequences` layers, and the iD editor does not implement a Panoramax signs overlay either — see [docs/id-provider-research.md](../../docs/id-provider-research.md).
 
 ## API keys
 
 Google Street View and Bing Streetside are "Open in …" buttons by default. Each becomes more with a key in `src/config.ts`:
 
-| Provider           | Setting               | With the key                                                                                        | Getting one                                                                                                                                       |
-| ------------------ | --------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Google Street View | `GOOGLE_MAPS_API_KEY` | A checkbox that checks coverage where you click; the button opens the panorama turned to the place. | A restricted browser key with the Street View Static API enabled; see [docs/viewpoint-photo-finder-plan.md](docs/viewpoint-photo-finder-plan.md). |
-| Bing Streetside    | `BING_MAPS_KEY`       | A map overlay with the panorama positions.                                                          | Microsoft issues no new Bing Maps keys. Existing enterprise keys work until June 30, 2028. Streetside has no coverage in Germany.                 |
+| Provider           | Setting               | With the key                                                                                        | Getting one                                                                                                                                             |
+| ------------------ | --------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Google Street View | `GOOGLE_MAPS_API_KEY` | A checkbox that checks coverage where you click; the button opens the panorama turned to the place. | A restricted browser key with the Street View Static API enabled; see [docs/viewpoint-photo-finder-plan.md](../../docs/viewpoint-photo-finder-plan.md). |
+| Bing Streetside    | `BING_MAPS_KEY`       | A map overlay with the panorama positions.                                                          | Microsoft issues no new Bing Maps keys. Existing enterprise keys work until June 30, 2028. Streetside has no coverage in Germany.                       |
 
 The keys ship in the JS bundle, so restrict them on the provider's side (HTTP referrer, API allow-list, quotas).
 
 ## Development
 
+Run these in the repository root:
+
 ```bash
 bun install
-bun dev
+bun run dev
 bun run check
 ```
 
-- `bun dev` — start the Vite dev server
+- `bun run dev` — start the Vite dev server
 - `bun run check` — format, lint, type-check, and run tests
-- `bun run build` — production build for GitHub Pages
+- `bun run build` — production build; GitHub Pages sets `VITE_BASE=/street-imagery/`
 
 ## URL state
 

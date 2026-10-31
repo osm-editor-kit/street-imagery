@@ -75,7 +75,7 @@ import { PanoramaxWebViewerPanel } from '@osm-editor-kit/street-imagery-react/pa
 <StreetLevelImageryViewer panoramaxPanel={PanoramaxWebViewerPanel} … />
 ```
 
-Only then you need `@panoramax/web-viewer` (an optional peer dependency) and its Vite setup: see `vite.config.ts` of [street-level-imagery-provider-overview](https://github.com/osmberlin/street-level-imagery-provider-overview).
+Only then you need `@panoramax/web-viewer` (an optional peer dependency) and its Vite setup: see [`vite.config.ts` of the preview](https://github.com/osm-editor-kit/street-imagery/blob/main/apps/preview/vite.config.ts).
 
 ## Viewpoints and floating viewer
 

@@ -1,8 +1,8 @@
 # Using the street-imagery packages in Knotenpunkte and tilda-geo
 
-Status 2026-10-02. Packages: `@osm-editor-kit/street-imagery` 0.1.0-alpha.5 (pure TypeScript) and
-`@osm-editor-kit/street-imagery-react` 0.1.0-alpha.6 (React, react-map-gl, MapLibre 6), source in
-`OSM/street-space-editor/packages/`. This app is the test bed for both.
+Packages: `@osm-editor-kit/street-imagery` (pure TypeScript) and
+`@osm-editor-kit/street-imagery-react` (React, react-map-gl, MapLibre 6), source in `packages/`.
+The preview in `apps/preview` is the test bed for both.
 
 Much of the Mapillary logic comes from the iD Radnetz fork (`iD--radnetz-berlin/WORKDOC.md`,
 features 18, 19, 26). What stayed in iD: the OSM tag fields and the buttons that write tags.
@@ -39,13 +39,13 @@ Wrap the app once for German texts and dates (without it everything is English):
 <StreetImageryLocaleProvider locale="de">…</StreetImageryLocaleProvider>
 ```
 
-MapLibre 6 needs its worker set up once (`setWorkerUrl`, see `src/features/map/maplibre-worker.ts`
+MapLibre 6 needs its worker set up once (`setWorkerUrl`, see `apps/preview/src/features/map/maplibre-worker.ts`
 here; Knotenpunkte already has this).
 
 ## The map layers and their look
 
 Render `<StreetLevelImagerySourcesAndLayers>` inside the react-map-gl `<Map>`; the paint is built
-in and not configurable beyond the options below. Reference: `src/features/map/MapRoot.tsx` here.
+in and not configurable beyond the options below. Reference: `apps/preview/src/features/map/MapRoot.tsx` here.
 
 ```tsx
 <StreetLevelImagerySourcesAndLayers
@@ -83,7 +83,7 @@ in and not configurable beyond the options below. Reference: `src/features/map/M
 ## The floating viewer
 
 `<FloatingPhotoViewer>` is the box; put `<StreetLevelImageryViewer photo … />` inside. Reference:
-`src/features/viewer/PhotoFloatingViewer.tsx` here (about 300 lines, most of it this app's
+`apps/preview/src/features/viewer/PhotoFloatingViewer.tsx` here (about 300 lines, most of it this app's
 multi-provider handling).
 
 - `toolbar`: e.g. `<MapillaryFeatureBar data shownImage onShow />` for a selected sign or object.
