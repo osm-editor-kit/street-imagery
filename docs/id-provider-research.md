@@ -329,6 +329,8 @@ Sequences: `_oscCache.sequences[sequence_id] = { rotation: 0, images: [] }` — 
 
 - `resolution`: **1080** (default) or **2080** (HD checkbox)
 
+**Browser access (checked 2026-10-31):** tiles, `sequence-detail` and the image CDN all answer with `Access-Control-Allow-Origin: *`, tested with real requests from `localhost` and `osmberlin.github.io`. `geo.mapilio.com` had no CORS headers for months until Mapilio fixed it on 2026-10-21 ([iD #12786](https://github.com/openstreetmap/iD/pull/12786)); iD itself changed nothing. `end.mapilio.com` limits requests (HTTP 429, `{"error":"Rate limit exceeded"}`), which a burst of a few dozen requests reaches, so ask for each sequence once.
+
 ### 4.2 Data model
 
 #### Points (MVT layer `map_points`)

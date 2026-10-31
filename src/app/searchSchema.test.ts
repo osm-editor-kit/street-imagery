@@ -159,9 +159,9 @@ describe('appSearchSchema', () => {
     expect(parsed.date).toEqual({ from: '2024-02-29', to: '2024-12-31' })
   })
 
-  it('strips browser-unavailable providers from parsed search', () => {
+  it('keeps Mapilio in parsed search', () => {
     const parsed = parseAppSearch({ providers: ['mapillary', 'mapilio'] })
-    expect(parsed.providers).toEqual(['mapillary'])
+    expect(parsed.providers).toEqual(['mapillary', 'mapilio'])
   })
 
   it('keeps an explicit empty providers array', () => {

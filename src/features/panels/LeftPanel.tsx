@@ -32,7 +32,7 @@ import { APP_START_NOW } from '@/features/styles/ageBuckets'
 import { useAppI18n } from '@/i18n/useAppI18n'
 
 /** Shown after the other providers: little or no coverage for most users. */
-const LAST_PROVIDER_IDS: ProviderId[] = ['kartaview', 'mapilio', 'vegbilder']
+const LAST_PROVIDER_IDS: ProviderId[] = ['kartaview', 'vegbilder']
 const ORDERED_PROVIDERS = [
   ...PROVIDERS.filter((provider) => !LAST_PROVIDER_IDS.includes(provider.id)),
   ...LAST_PROVIDER_IDS.flatMap((id) => PROVIDERS.filter((provider) => provider.id === id)),
