@@ -37,6 +37,7 @@ export {
 export { viewSuggestionLabel } from './viewpoints/viewDirectionLabels'
 export * from './viewpoints/useViewpointSessionStore'
 export * from './viewpoints/useViewSuggestions'
+export * from './viewpoints/usePhotosLookingAt'
 // `MapillaryPanel`, `PanoramaxPanel`, `turnMapillaryViewerTo` …: see the `viewer-panels` entry.
 export type { MapillaryLookAt, MapillaryViewerOutline } from './panels/mapillaryLookAt'
 export * from './mapillary/useMapillaryFeatures'

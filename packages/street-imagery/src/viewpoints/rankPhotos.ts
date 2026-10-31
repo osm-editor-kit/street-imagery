@@ -1,6 +1,7 @@
 import type { PhotoTypeFilter } from '../filters/searchFilters'
 import type { NormalizedPhoto } from '../providers/model'
 import { angleDiffDeg, bearingDeg, distanceMeters } from './geometry'
+import type { LngLat } from './geometry'
 import { viewDirections, type ViewDirection, type Viewpoint } from './viewpoints'
 
 const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000
@@ -149,6 +150,93 @@ export const buildViewSuggestions = (
       candidates: rankPhotosForDirection(photos, viewpoint, direction, options),
     }))
   })
+
+export type RankPhotosLookingAtOptions = Pick<
+  RankPhotosOptions,
+  'now' | 'maxAgeMs' | 'maxDistanceMeters' | 'photoTypes' | 'limit'
+> & {
+  /** A flat photo's heading must point within this many degrees of the place. Default 35. */
+  maxFlatAngleDeg?: number
+}
+
+export type PhotoLookingAt = PhotoCandidate & {
+  /** From the photo to the place, for `lookAtBearing`. */
+  bearingToPlace: number
+}
+
+const LOOKING_AT_DEFAULTS = { maxFlatAngleDeg: 35, limit: 20 }
+
+/** Closer than this the bearing to the place is mostly GPS noise, so it says nothing. */
+const BEARING_MIN_METERS = 5
+
+const scorePhotoLookingAt = (
+  place: LngLat,
+  photo: NormalizedPhoto,
+  options: RankPhotosLookingAtOptions,
+): PhotoLookingAt | null => {
+  const { now, maxAgeMs, photoTypes } = options
+  const maxDistance = options.maxDistanceMeters ?? DEFAULTS.maxDistanceMeters
+  const isPano = photo.isPano === true
+
+  if (photoTypes && !photoTypes.includes(isPano ? 'pano' : 'flat')) {
+    return null
+  }
+  if (!isPano && photo.heading == null) {
+    return null
+  }
+
+  const distance = distanceMeters(place, photo.lngLat)
+  if (distance > maxDistance) {
+    return null
+  }
+
+  const ageYears = photo.capturedAt == null ? null : (now - photo.capturedAt) / YEAR_MS
+  if (maxAgeMs != null && (photo.capturedAt == null || now - photo.capturedAt > maxAgeMs)) {
+    return null
+  }
+
+  const bearingToPlace = bearingDeg(photo.lngLat, place)
+  const angleDiff = isPano ? 0 : angleDiffDeg(photo.heading ?? 0, bearingToPlace)
+  const maxAngle = options.maxFlatAngleDeg ?? LOOKING_AT_DEFAULTS.maxFlatAngleDeg
+  if (distance >= BEARING_MIN_METERS && angleDiff > maxAngle) {
+    return null
+  }
+
+  const prefersFlat = !photoTypes || photoTypes.includes('flat')
+  const score =
+    distance / maxDistance +
+    (ageYears ?? 10) * AGE_WEIGHT +
+    (isPano && prefersFlat ? PANO_PENALTY : 0)
+
+  return { photo, score, distanceMeters: distance, angleDiff, ageYears, bearingToPlace }
+}
+
+/**
+ * The photos that see `place`, best first: flat photos near it whose heading points at it, and
+ * 360° photos near it. Compare `rankPhotosForDirection`, which answers "photos that look north
+ * here" and not "who sees this spot". A flat photo closer than a few metres always counts.
+ */
+export const rankPhotosLookingAt = (
+  place: LngLat,
+  photos: NormalizedPhoto[],
+  options: RankPhotosLookingAtOptions,
+): PhotoLookingAt[] => {
+  const seen = new Set<string>()
+  const candidates: PhotoLookingAt[] = []
+  for (const photo of photos) {
+    const key = `${photo.providerId}:${photo.photoId}`
+    if (seen.has(key)) {
+      continue
+    }
+    seen.add(key)
+    const candidate = scorePhotoLookingAt(place, photo, options)
+    if (candidate) {
+      candidates.push(candidate)
+    }
+  }
+  candidates.sort((a, b) => a.score - b.score)
+  return candidates.slice(0, options.limit ?? LOOKING_AT_DEFAULTS.limit)
+}
 
 /** Years → ms, for `maxAgeMs`. */
 export const yearsToMs = (years: number): number => years * YEAR_MS

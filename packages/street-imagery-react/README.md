@@ -118,6 +118,35 @@ For a free window over the whole page, use the viewport as container and let the
 
 `position="fixed"` (default `absolute`) needs an ancestor without `transform` or `filter`, and a stacking order that puts the box above the page. `minVisibleShare` (0–1) never lets the box go over the top edge, because the header is what moves it. The limit also holds when the box or the container changes size, and a minimized viewer stays within reach. Without `minVisibleShare` the box keeps 8px from the right and bottom edge.
 
+To ask "who sees this spot" instead of "what looks north here", use `usePhotosLookingAt`: flat photos within `maxDistanceMeters` (50) whose heading points at the place within `maxFlatAngleDeg` (35), and 360° photos within the distance, best first. Each candidate has `bearingToPlace`.
+
+```tsx
+const [place, setPlace] = useState<LngLat | null>(null) // set on map click
+const [index, setIndex] = useState(0)
+const { candidates } = usePhotosLookingAt(place, { maxAgeYears: 2, enabled: place != null })
+const candidate = candidates[index]
+
+{candidate ? (
+  <FloatingPhotoViewer
+    title="Photos of this place"
+    onClose={() => setPlace(null)}
+    step={{
+      onPrevious: index > 0 ? () => setIndex(index - 1) : undefined,
+      onNext: index < candidates.length - 1 ? () => setIndex(index + 1) : undefined,
+      previousLabel: 'Previous photo',
+      nextLabel: 'Next photo',
+    }}
+  >
+    <StreetLevelImageryViewer
+      photo={candidate.photo}
+      lookAtBearing={candidate.bearingToPlace}
+      … />
+  </FloatingPhotoViewer>
+) : null}
+```
+
+The list needs no chips: `step` gives the `<` `>` buttons and Alt + arrow keys. `lookAtBearing` turns Mapillary 360° photos only. The pure ranking is `rankPhotosLookingAt(place, photos, options)` in the core package.
+
 For a link that opens the same photo with the same zoom and pan, keep the view the viewer reports and pass it to `providerExternalLink`:
 
 ```tsx
