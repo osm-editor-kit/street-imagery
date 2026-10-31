@@ -2,7 +2,6 @@ import {
   angleDiffDeg,
   distanceMeters,
   lineLengthMeters,
-  photoMatchesFilters,
   snapToLine,
   type LngLat,
   type NormalizedPhoto,
@@ -70,9 +69,6 @@ export const useStepAlongLine = (
 
   const onLine = photos.flatMap((candidate) => {
     if (candidate.photoId === photo.photoId) {
-      return []
-    }
-    if (!photoMatchesFilters(candidate, search.photoTypes, search.date)) {
       return []
     }
     const position = positionOnLine(line, candidate.lngLat)

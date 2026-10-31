@@ -118,8 +118,13 @@ export const PhotoFloatingViewer = () => {
   const photosSettled = !suggestionsLoading && !isLoading && !isFetching
   useEffect(
     function autoSelectBestPhoto() {
+      // A shown photo or a closed panel ends the click, so the same spot can be clicked again.
+      if (!autoSelectKey || selected) {
+        autoSelectedRef.current = null
+        return
+      }
       // A selected map feature opens its own best photo (below).
-      if (!autoSelectKey || selected || !photosSettled || selectedFeature.featureId) {
+      if (!photosSettled || selectedFeature.featureId) {
         return
       }
       if (autoSelectedRef.current === autoSelectKey) {

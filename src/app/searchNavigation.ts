@@ -78,7 +78,9 @@ export const useAppSearchNavigation = () => {
       providers,
     })
     const serialized = serializeAppSearch(
-      providers.length === 0 ? { ...next, clicked: undefined, selected: undefined } : next,
+      providers.length === 0
+        ? { ...next, clicked: undefined, selected: undefined, feature: undefined }
+        : next,
     )
 
     void navigate({

@@ -18,6 +18,7 @@ setStreetImageryConfig(
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
     bingMapsKey: BING_MAPS_KEY,
     infra3d: { projects: INFRA3D_PROJECTS },
+    openLinksIn: 'window',
   }),
 )
 
