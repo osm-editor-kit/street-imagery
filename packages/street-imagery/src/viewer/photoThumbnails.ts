@@ -1,5 +1,6 @@
 import { getStreetImageryConfig } from '../config'
 import type { NormalizedPhoto } from '../providers/model'
+import { fetchTileCached } from '../providers/tileCache'
 import { buildStreetsidePreviewUrl } from './streetsidePreview'
 
 type MapillaryThumbResponse = {
@@ -27,10 +28,7 @@ type MapilioSequenceResponse = {
 const mapilioCdnUrl = (uploadedHash: string, filename: string, size: '1080' | '2080') =>
   `https://cdn.mapilio.com/im/${uploadedHash}/${filename}/${size}`
 
-export const fetchMapilioSequenceItem = async (
-  sequenceId: string,
-  photoId: string,
-): Promise<MapilioSequenceItem | null> => {
+const requestMapilioSequenceItems = async (sequenceId: string) => {
   const response = await fetch(
     `https://end.mapilio.com/api/sequence-detail?sequence_uuid=${encodeURIComponent(sequenceId)}`,
   )
@@ -39,7 +37,21 @@ export const fetchMapilioSequenceItem = async (
   }
 
   const data = (await response.json()) as MapilioSequenceResponse
-  const items = Array.isArray(data.data) ? data.data : (data.data?.data ?? [])
+  return Array.isArray(data.data) ? data.data : (data.data?.data ?? [])
+}
+
+export const fetchMapilioSequenceItem = async (
+  sequenceId: string,
+  photoId: string,
+): Promise<MapilioSequenceItem | null> => {
+  // Mapilio limits `sequence-detail` (HTTP 429) and a panorama tour resolves every photo of a
+  // sequence at once, so the tile cache asks for each sequence once and drops failed requests.
+  const items = await fetchTileCached(
+    `mapilio:sequence:${sequenceId}`,
+    () => requestMapilioSequenceItems(sequenceId),
+    new AbortController().signal,
+  )
+
   const match = items.find((item) => String(item.id) === photoId)
   return match ?? null
 }

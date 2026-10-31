@@ -80,9 +80,6 @@ export const PROVIDERS: ProviderMeta[] = [
     minZoom: 14,
     sequencesMinZoom: 14,
     homepageUrl: 'https://mapilio.com',
-    defaultEnabled: false,
-    browserUnavailableReason:
-      'Mapilio’s tile server (geo.mapilio.com) does not allow browser requests from other sites (CORS). Coverage dots cannot load until Mapilio fixes this upstream.',
   },
   {
     id: 'streetside',

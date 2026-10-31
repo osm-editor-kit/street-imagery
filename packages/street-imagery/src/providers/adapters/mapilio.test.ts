@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import type { Feature } from 'geojson'
 import { providerById } from '../meta'
+import { isBrowserAvailableProvider } from '../registry'
 import {
   normalizeMapilioPointFeature,
   normalizeMapilioRoadFeature,
@@ -9,9 +10,9 @@ import {
 } from './mapilio'
 
 describe('mapilio provider', () => {
-  it('is disabled in the browser until Mapilio fixes tile-server CORS', () => {
-    expect(providerById.mapilio.defaultEnabled).toBe(false)
-    expect(providerById.mapilio.browserUnavailableReason).toContain('CORS')
+  it('is available in the browser', () => {
+    expect(isBrowserAvailableProvider('mapilio')).toBe(true)
+    expect(providerById.mapilio.defaultEnabled).toBeUndefined()
   })
 })
 
