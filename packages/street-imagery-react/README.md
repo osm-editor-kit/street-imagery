@@ -106,6 +106,18 @@ const { suggestions } = useViewSuggestions(viewpoints, { maxAgeYears: 2 })
 Render `FloatingPhotoViewer` inside a positioned map container. Photos from suggestions open in
 `StreetLevelImageryViewer` with `lookAtBearing={suggestion.direction.bearing}`.
 
+A host without suggested views leaves out `suggestions`, `activeDirectionKey` and `onSelectSuggestion`; the chips are then not shown. Its own buttons and links go in `titleActions`. They keep their size next to a long title and do not start a drag.
+
+For a free window over the whole page, use the viewport as container and let the box leave it until a share of it shows:
+
+```tsx
+<FloatingPhotoViewer position="fixed" minVisibleShare={0.2} onClose={close} title="Photo">
+  {viewer}
+</FloatingPhotoViewer>
+```
+
+`position="fixed"` (default `absolute`) needs an ancestor without `transform` or `filter`, and a stacking order that puts the box above the page. `minVisibleShare` (0–1) never lets the box go over the top edge, because the header is what moves it. The limit also holds when the box or the container changes size, and a minimized viewer stays within reach. Without `minVisibleShare` the box keeps 8px from the right and bottom edge.
+
 **Tailwind:** components use Tailwind classes. Tailwind does not scan `node_modules`, so add to your CSS:
 
 ```css

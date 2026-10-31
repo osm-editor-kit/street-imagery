@@ -10,13 +10,24 @@ import {
 import { PhotoCount } from '../i18n/PhotoCount'
 import { PhotoDate } from '../i18n/PhotoDate'
 import { useStreetImageryI18n } from '../i18n/StreetImageryLocaleProvider'
+import { FLOATING_VIEWER_EDGE, clampFloatingViewerPosition } from './floatingViewerPosition'
 import { viewSuggestionLabel } from './viewDirectionLabels'
 
 type Layout = { right: number; bottom: number; width: number; minimized: boolean }
 
 const DEFAULT_LAYOUT: Layout = { right: 16, bottom: 32, width: 420, minimized: false }
 const MIN_WIDTH = 280
-const EDGE = 8
+/** A press on a header button only moves the box from this far on; less is a click. */
+const BUTTON_DRAG_SLOP = 4
+const EDGE = FLOATING_VIEWER_EDGE
+/** Left free for a minimized viewer at the left edge, so that it can be opened again. */
+const MINIMIZED_WIDTH = '6rem'
+
+/** The element the box moves in: the viewport for `position="fixed"`, or its positioned parent. */
+const containerSize = (box: HTMLElement, position: 'absolute' | 'fixed') => {
+  const container = position === 'fixed' ? document.documentElement : box.offsetParent
+  return { width: container?.clientWidth ?? 0, height: container?.clientHeight ?? 0 }
+}
 
 const hasStoredLayout = (storageKey: string): boolean => {
   try {
@@ -83,7 +94,7 @@ const ToolbarButton = ({
 }) => (
   <button
     aria-label={label}
-    className="inline-flex size-7 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+    className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
     disabled={disabled}
     onClick={onClick}
     title={label}
@@ -198,16 +209,19 @@ export const FloatingViewerInfoButton = ({
 
 export type FloatingPhotoViewerProps = {
   title: ReactNode
-  /** Buttons right after the title, e.g. `<FloatingViewerInfoButton>` for the photo's details. */
+  /**
+   * Buttons or links right after the title, e.g. `<FloatingViewerInfoButton>` for the photo's
+   * details. They keep their size; a long title gives way.
+   */
   titleActions?: ReactNode
-  /** Suggested views (viewpoint × direction); shown as chips. Empty hides the strip. */
-  suggestions: ViewSuggestion[]
-  activeDirectionKey: string | null
+  /** Suggested views (viewpoint × direction); shown as chips. Empty or left out hides the strip. */
+  suggestions?: ViewSuggestion[]
+  activeDirectionKey?: string | null
   /**
    * A view button was clicked. `candidate` is the photo to show: the view's best one, or the next
    * one when the active view is clicked again.
    */
-  onSelectSuggestion: (suggestion: ViewSuggestion, candidate: PhotoCandidate) => void
+  onSelectSuggestion?: (suggestion: ViewSuggestion, candidate: PhotoCandidate) => void
   /** The photo in the viewer, so the active view can show which of its photos that is. */
   shownPhotoId?: string | null
   /**
@@ -248,17 +262,29 @@ export type FloatingPhotoViewerProps = {
    * one with `left` and `top` in px from the container's edges, e.g. next to a side panel.
    */
   defaultPosition?: { corner: 'top-left'; left?: number; top?: number }
+  /**
+   * What the box moves in: its positioned parent (`absolute`, default), or the viewport (`fixed`),
+   * for a box over the whole page. A `fixed` box needs an ancestor without `transform` or `filter`.
+   */
+  position?: 'absolute' | 'fixed'
+  /**
+   * Lets the box leave its container until only this share (0–1) of its width and height shows,
+   * like a free window; never over the top, where the header is. It also stays that way when the
+   * container or the box changes size. Without it the box keeps 8px from the right and bottom edge.
+   */
+  minVisibleShare?: number
 }
 
 /**
- * Photo viewer box floating over the map. Render inside a positioned (relative) map container.
+ * Photo viewer box floating over the map. Render inside a positioned (relative) map container,
+ * or anywhere with `position="fixed"`.
  * Drag the header to move, drag the left edge to resize. Keys: Esc closes, [ and ] step history,
  * Alt + arrow left/right step along (`step`).
  */
 export const FloatingPhotoViewer = ({
   title,
   titleActions,
-  suggestions,
+  suggestions = [],
   activeDirectionKey,
   onSelectSuggestion,
   shownPhotoId,
@@ -275,6 +301,8 @@ export const FloatingPhotoViewer = ({
   drawer,
   storageKey = 'street-imagery:floating-viewer',
   defaultPosition,
+  position = 'absolute',
+  minVisibleShare,
 }: FloatingPhotoViewerProps) => {
   const { messages } = useStreetImageryI18n()
   const severalViewpoints =
@@ -284,14 +312,25 @@ export const FloatingPhotoViewer = ({
   // Until the user has moved the box (now or in an earlier visit) it sits at `defaultPosition`.
   const [moved, setMoved] = useState(() => hasStoredLayout(storageKey))
   const atTopLeft = defaultPosition?.corner === 'top-left' && !moved
-  const position = atTopLeft
+  const placement = atTopLeft
     ? { left: defaultPosition.left ?? EDGE, top: defaultPosition.top ?? EDGE }
     : { right: layout.right, bottom: layout.bottom }
+  // A free box can be anywhere, its much smaller minimized form must stay within reach.
+  const minimizedPlacement =
+    minVisibleShare === undefined || atTopLeft
+      ? placement
+      : {
+          right: `clamp(${EDGE}px, ${layout.right}px, calc(100% - ${MINIMIZED_WIDTH}))`,
+          bottom: Math.max(EDGE, layout.bottom),
+        }
+  const boxRef = useRef<HTMLElement>(null)
   const dragRef = useRef<{
     x: number
     y: number
     layout: Layout
     mode: 'move' | 'resize'
+    /** Started on a header button: a click until the pointer moves. */
+    onButton: boolean
   } | null>(null)
 
   const updateLayout = (next: Layout) => {
@@ -325,25 +364,69 @@ export const FloatingPhotoViewer = ({
     return () => window.removeEventListener('keydown', onShortcut)
   }, [])
 
-  const startDrag = (event: PointerEvent<HTMLElement>, mode: 'move' | 'resize') => {
-    if (event.button !== 0 || (event.target as HTMLElement).closest('button')) {
+  // The box counts from the bottom: growing, or a smaller window, would push its header out.
+  const keepOnScreen = useEffectEvent(() => {
+    const box = boxRef.current
+    if (!box || atTopLeft) {
       return
     }
-    event.currentTarget.setPointerCapture(event.pointerId)
+    const { right, bottom } = clampFloatingViewerPosition(
+      layout,
+      { width: box.offsetWidth, height: box.offsetHeight },
+      containerSize(box, position),
+      minVisibleShare,
+    )
+    if (right !== layout.right || bottom !== layout.bottom) {
+      setLayout({ ...layout, right, bottom })
+    }
+  })
+
+  const isFree = minVisibleShare !== undefined
+  useEffect(
+    function followBoxAndContainerSize() {
+      const box = boxRef.current
+      if (!isFree || !box) {
+        return undefined
+      }
+      const observer = new ResizeObserver(() => keepOnScreen())
+      observer.observe(box)
+      if (box.offsetParent) {
+        observer.observe(box.offsetParent)
+      }
+      window.addEventListener('resize', keepOnScreen)
+      return () => {
+        observer.disconnect()
+        window.removeEventListener('resize', keepOnScreen)
+      }
+    },
+    [isFree, layout.minimized],
+  )
+
+  const startDrag = (event: PointerEvent<HTMLElement>, mode: 'move' | 'resize') => {
+    const target = event.target as HTMLElement
+    if (event.button !== 0 || target.closest('a')) {
+      return
+    }
+    // A box far off to one side may show nothing but buttons: they must move it too.
+    const button = target.closest('button')
+    const onButton = button !== null
+    ;(button ?? event.currentTarget).setPointerCapture(event.pointerId)
     // The layout counts from the bottom right: take over where the box is now.
-    const box = event.currentTarget.closest('section')
-    const container = box?.offsetParent
+    const box = boxRef.current
+    const container = box ? containerSize(box, position) : null
     const start =
       atTopLeft && box && container
         ? {
             ...layout,
-            right: container.clientWidth - box.offsetLeft - box.offsetWidth,
-            bottom: container.clientHeight - box.offsetTop - box.offsetHeight,
+            right: container.width - box.offsetLeft - box.offsetWidth,
+            bottom: container.height - box.offsetTop - box.offsetHeight,
           }
         : layout
-    setLayout(start)
-    setMoved(true)
-    dragRef.current = { x: event.clientX, y: event.clientY, layout: start, mode }
+    dragRef.current = { x: event.clientX, y: event.clientY, layout: start, mode, onButton }
+    if (!onButton) {
+      setLayout(start)
+      setMoved(true)
+    }
   }
 
   const onDrag = (event: PointerEvent<HTMLElement>) => {
@@ -353,20 +436,33 @@ export const FloatingPhotoViewer = ({
     }
     const dx = event.clientX - drag.x
     const dy = event.clientY - drag.y
-    setLayout(
-      drag.mode === 'move'
-        ? {
-            ...drag.layout,
-            right: Math.max(EDGE, drag.layout.right - dx),
-            bottom: Math.max(EDGE, drag.layout.bottom - dy),
-          }
-        : { ...drag.layout, width: Math.max(MIN_WIDTH, drag.layout.width - dx) },
-    )
+    if (drag.onButton) {
+      if (Math.hypot(dx, dy) < BUTTON_DRAG_SLOP) {
+        return
+      }
+      // With the capture the release goes to the header, so the button gets no click.
+      event.currentTarget.setPointerCapture(event.pointerId)
+      drag.onButton = false
+      setMoved(true)
+    }
+    const box = boxRef.current
+    if (drag.mode === 'resize') {
+      setLayout({ ...drag.layout, width: Math.max(MIN_WIDTH, drag.layout.width - dx) })
+    } else if (box) {
+      const next = clampFloatingViewerPosition(
+        { right: drag.layout.right - dx, bottom: drag.layout.bottom - dy },
+        { width: box.offsetWidth, height: box.offsetHeight },
+        containerSize(box, position),
+        minVisibleShare,
+      )
+      setLayout({ ...drag.layout, ...next })
+    }
   }
 
   const endDrag = () => {
-    if (dragRef.current) {
-      dragRef.current = null
+    const wasDragged = dragRef.current?.onButton === false
+    dragRef.current = null
+    if (wasDragged) {
       writeLayout(storageKey, layout)
     }
   }
@@ -376,9 +472,9 @@ export const FloatingPhotoViewer = ({
   if (layout.minimized) {
     return (
       <button
-        className="absolute z-10 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50"
+        className={`${position} z-10 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50`}
         onClick={() => updateLayout({ ...layout, minimized: false })}
-        style={position}
+        style={minimizedPlacement}
         type="button"
       >
         <Icon path={ICONS.expand} />
@@ -390,9 +486,10 @@ export const FloatingPhotoViewer = ({
   return (
     <section
       aria-label={messages.viewer.regionLabel}
-      className="absolute z-10 flex max-h-[calc(100%-1rem)] flex-col overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-200"
+      className={`${position} z-10 flex max-h-[calc(100%-1rem)] flex-col overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-200`}
+      ref={boxRef}
       style={{
-        ...position,
+        ...placement,
         width: `min(${layout.width}px, calc(100% - 1rem))`,
       }}
     >
@@ -427,7 +524,9 @@ export const FloatingPhotoViewer = ({
         ) : null}
         <div className="flex min-w-0 flex-1 items-center gap-0.5">
           <h2 className="min-w-0 truncate px-1 text-sm font-semibold text-slate-800">{title}</h2>
-          {titleActions}
+          {titleActions ? (
+            <div className="flex shrink-0 items-center gap-0.5">{titleActions}</div>
+          ) : null}
         </div>
         {onBack && onForward ? (
           <>
@@ -470,7 +569,7 @@ export const FloatingPhotoViewer = ({
             <SuggestionChip
               active={suggestion.direction.key === activeDirectionKey}
               key={suggestion.direction.key}
-              onSelect={(candidate) => onSelectSuggestion(suggestion, candidate)}
+              onSelect={(candidate) => onSelectSuggestion?.(suggestion, candidate)}
               shownPhotoId={shownPhotoId}
               showPlace={severalViewpoints}
               suggestion={suggestion}
