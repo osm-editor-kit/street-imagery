@@ -33,10 +33,10 @@
     "eslint-plugin-compat": "^7.0.2",
     "eslint-plugin-react-hooks": "^7.1.1",
     "husky": "9.1.7",
-    "oxfmt": "0.71.0",
-    "oxlint": "1.86.0",
+    "oxfmt": "0.74.0",
+    "oxlint": "1.89.0",
     "oxlint-config-react-hooks-js": "^1.1.4",
-    "oxlint-tsgolint": "7.0.2003",
+    "oxlint-tsgolint": "7.0.2005",
     "picocolors": "^1.1.1",
     "typescript": "^7.0.2"
   },
