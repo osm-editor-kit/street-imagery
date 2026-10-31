@@ -225,7 +225,7 @@ export const LeftPanel = () => {
           {t.app.intro}{' '}
           <ExternalLink
             className="text-slate-800 underline decoration-slate-300 underline-offset-2 hover:text-slate-900 hover:decoration-slate-500"
-            href="https://github.com/osmberlin/street-level-imagery-provider-overview"
+            href="https://github.com/osm-editor-kit/street-imagery"
           >
             {t.app.sourceOnGitHub}
           </ExternalLink>

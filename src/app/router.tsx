@@ -3,7 +3,7 @@ import { createRouter } from '@tanstack/react-router'
 import { routerSearch } from '@/app/routerSearch'
 import { routeTree } from '@/routeTree.gen'
 
-const BASE_PATH = '/street-level-imagery-provider-overview'
+const BASE_PATH = '/street-imagery'
 
 export const queryClient = new QueryClient({
   defaultOptions: {

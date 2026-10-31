@@ -21,7 +21,7 @@ try {
 }
 
 export default defineConfig({
-  base: '/street-level-imagery-provider-overview/',
+  base: '/street-imagery/',
   resolve: {
     // Bun may resolve PSV deps from ~/.bun/install/cache; pin three to the project install.
     dedupe: ['three'],
