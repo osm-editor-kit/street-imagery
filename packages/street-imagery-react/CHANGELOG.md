@@ -1,5 +1,13 @@
 # @osm-editor-kit/street-imagery-react
 
+## 0.1.0-alpha.15
+
+### Patch Changes
+
+- a52ec0d: - The source moved to [osm-editor-kit/street-imagery](https://github.com/osm-editor-kit/street-imagery). Nothing changes for apps that use the packages.
+- Updated dependencies [a52ec0d]
+  - @osm-editor-kit/street-imagery@0.1.0-alpha.12
+
 ## 0.1.0-alpha.14
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @osm-editor-kit/street-imagery
 
+## 0.1.0-alpha.12
+
+### Patch Changes
+
+- a52ec0d: - The source moved to [osm-editor-kit/street-imagery](https://github.com/osm-editor-kit/street-imagery). Nothing changes for apps that use the packages.
+
 ## 0.1.0-alpha.11
 
 ### Patch Changes
