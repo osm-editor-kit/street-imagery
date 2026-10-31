@@ -1,0 +1,99 @@
+{
+  "name": "@osm-editor-kit/street-imagery",
+  "version": "0.1.0-alpha.11",
+  "description": "Street-level imagery providers, GeoJSON, viewfields, tiles, and viewer helpers (Mapillary, Panoramax, and more).",
+  "homepage": "https://github.com/osmberlin/street-space-editor/tree/main/packages/street-imagery",
+  "license": "MIT",
+  "author": "Tobias Jordans",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/osmberlin/street-space-editor.git",
+    "directory": "packages/street-imagery"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./providers/all": "./src/providers/all.ts",
+    "./providers/mapillary": "./src/providers/adapters/mapillary.ts",
+    "./providers/mapillary-signs": "./src/providers/adapters/mapillary-signs.ts",
+    "./providers/mapillary-map-features": "./src/providers/adapters/mapillary-map-features.ts",
+    "./providers/panoramax": "./src/providers/adapters/panoramax.ts",
+    "./providers/kartaview": "./src/providers/adapters/kartaview.ts",
+    "./providers/mapilio": "./src/providers/adapters/mapilio.ts",
+    "./providers/streetside": "./src/providers/adapters/streetside.ts",
+    "./providers/vegbilder": "./src/providers/adapters/vegbilder.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  },
+  "scripts": {
+    "build": "tsup && rm -f .tsbuildinfo && tsc -p tsconfig.build.json",
+    "type-check": "tsc --noEmit",
+    "test-run": "bun test src",
+    "prepublishOnly": "bun run build && bun ../../scripts/package-exports-for-publish.ts",
+    "postpublish": "bun ../../scripts/package-exports-restore.ts",
+    "prepack": "bun ../../scripts/package-exports-for-publish.ts",
+    "postpack": "bun ../../scripts/package-exports-restore.ts"
+  },
+  "dependencies": {
+    "@mapbox/vector-tile": "^3.0.0",
+    "date-fns": "^4.4.0",
+    "pbf": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "bun-types": "^1.2.20",
+    "maplibre-gl": "^6.7.0",
+    "tsup": "^8.5.1",
+    "typescript": "^7.0.0",
+    "vite": "^8.0.0"
+  },
+  "publishExports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./providers/all": {
+      "types": "./dist/providers/all.d.ts",
+      "import": "./dist/providers/all.js"
+    },
+    "./providers/mapillary": {
+      "types": "./dist/providers/adapters/mapillary.d.ts",
+      "import": "./dist/providers/mapillary.js"
+    },
+    "./providers/mapillary-signs": {
+      "types": "./dist/providers/adapters/mapillary-signs.d.ts",
+      "import": "./dist/providers/mapillary-signs.js"
+    },
+    "./providers/mapillary-map-features": {
+      "types": "./dist/providers/adapters/mapillary-map-features.d.ts",
+      "import": "./dist/providers/mapillary-map-features.js"
+    },
+    "./providers/panoramax": {
+      "types": "./dist/providers/adapters/panoramax.d.ts",
+      "import": "./dist/providers/panoramax.js"
+    },
+    "./providers/kartaview": {
+      "types": "./dist/providers/adapters/kartaview.d.ts",
+      "import": "./dist/providers/kartaview.js"
+    },
+    "./providers/mapilio": {
+      "types": "./dist/providers/adapters/mapilio.d.ts",
+      "import": "./dist/providers/mapilio.js"
+    },
+    "./providers/streetside": {
+      "types": "./dist/providers/adapters/streetside.d.ts",
+      "import": "./dist/providers/streetside.js"
+    },
+    "./providers/vegbilder": {
+      "types": "./dist/providers/adapters/vegbilder.d.ts",
+      "import": "./dist/providers/vegbilder.js"
+    },
+    "./package.json": "./package.json"
+  }
+}

@@ -1,0 +1,281 @@
+# `@osm-editor-kit/street-imagery-react`
+
+> [!NOTE]
+> This package is an **alpha** release and still under active development. APIs may change; install with the npm `alpha` dist-tag.
+
+## What it does
+
+React + MapLibre UI on top of `@osm-editor-kit/street-imagery`:
+
+- Map sources and layers for photos, sequences, and viewfields
+- Click handling and interactive layer ids
+- TanStack Query hooks to load provider data for the viewport
+- Lazy viewer panels: Mapillary and Panoramax photos in one viewer (`mapillary-js`)
+- Helpers for selection, thumbnails, and easing the map to a photo
+- Viewpoints + floating photo viewer: suggested views per direction, history, map layer
+
+## Usage
+
+```tsx
+import {
+  StreetLevelImagerySourcesAndLayers,
+  StreetLevelImageryViewer,
+  useMapViewportBbox,
+  queryStreetImageryFeatures,
+  streetImageryInteractiveLayerIds,
+} from '@osm-editor-kit/street-imagery-react'
+import { createStreetImageryConfig } from '@osm-editor-kit/street-imagery'
+
+const bbox = useMapViewportBbox('main')
+
+<StreetLevelImagerySourcesAndLayers
+  providers={['mapillary', 'panoramax']}
+  bbox={bbox}
+  zoom={map.zoom}
+  filter={{ photoTypes: ['flat', 'pano'] }}
+  options={{
+    config: createStreetImageryConfig({ mapillaryToken: '…' }),
+    showSequences: true,
+    showViewfields: true,
+    selectedPhoto,
+    photoCircleColor: '#3b82f6',
+    mapFeatureCircleColor: '#94a3b8',
+    beforeId: 'road-label', // optional: draw everything below this layer of your style
+    minZoom: 10, // optional: below this zoom nothing is requested or drawn
+  }}
+/>
+
+// interactiveLayerIds={streetImageryInteractiveLayerIds(providers)}
+const hits = queryStreetImageryFeatures(event)
+
+<StreetLevelImageryViewer photo={selectedPhoto} groupPhotos={sequencePhotos}
+  onPhotoSelected={setSelection} onEaseMapToPoint={(lng, lat) => map.easeTo({ center: [lng, lat] })} />
+```
+
+**Before photos are loaded:** where a provider has own vector tiles with its track lines (Mapillary: zoom 6 to 15), MapLibre reads those itself. Same colours and filters; the lines are not clickable. Zoomed far out these tiles are several MB each in dense areas; set `options.minZoom` to skip them.
+
+**Mapillary:** `createStreetImageryConfig({ mapillaryToken })` or `setStreetImageryConfig` at boot (`@osm-editor-kit/street-imagery`). **Panoramax:** nothing to set up, the Mapillary viewer shows its pictures too (see below).
+
+Also: `useAllProviderPhotos`, `useProviderPhotos` / `useProviderSequences` / `useProviderMapFeatures`, `usePhotoThumbnails`, `resolveSelectedSequence`, `StreetLevelImageryViewCone`, `useViewerBearing` / `useViewerActions`. The panels themselves (`MapillaryPanel`, `PanoramaxPanel`) are in `@osm-editor-kit/street-imagery-react/viewer-panels`; `StreetLevelImageryViewer` loads them on demand, so `mapillary-js` is only loaded when a photo is shown.
+
+### Panoramax in the Mapillary viewer
+
+`PanoramaxPanel` is a `mapillary-js` viewer with a `PanoramaxDataProvider`, which reads the Panoramax API. One viewer engine for both providers: the same arrows, the same view cone on the map, no second engine to load and no build setup.
+
+- A picture opens with its `sd` file (2048 px wide). When you zoom in, the original file is loaded once and the sharp parts are cut from it in the browser.
+- Steps along the sequence work (previous, next, play). The arrows to pictures nearby do not: they need Mapillary's 3D reconstruction.
+- The panel shows creator and licence in a line at the bottom; `hideAttribution` removes it.
+- `PanoramaxDataProvider` is exported from `viewer-panels` for a `mapillary-js` `Viewer` you own: `new Viewer({ container, dataProvider: new PanoramaxDataProvider({ endpoint }), imageId })`.
+
+**Panoramax's own viewer** (`@panoramax/web-viewer`) is still there as an option:
+
+```tsx
+import { PanoramaxWebViewerPanel } from '@osm-editor-kit/street-imagery-react/panoramax-web-viewer'
+
+<StreetLevelImageryViewer panoramaxPanel={PanoramaxWebViewerPanel} … />
+```
+
+Only then you need `@panoramax/web-viewer` (an optional peer dependency) and its Vite setup: see `vite.config.ts` of [street-level-imagery-provider-overview](https://github.com/osmberlin/street-level-imagery-provider-overview).
+
+## Viewpoints and floating viewer
+
+Click → viewpoints → ranked Mapillary photos per view direction → floating viewer with chips and history.
+
+```tsx
+import { viewpointFromPoint, viewpointsFromLine } from '@osm-editor-kit/street-imagery'
+import {
+  FloatingPhotoViewer,
+  getViewpointSession,
+  useViewpoints,
+  useViewSuggestions,
+  ViewpointLayer,
+  VIEWPOINT_DIRECTION_LAYER_ID,
+  viewDirectionKeyFromFeatures,
+} from '@osm-editor-kit/street-imagery-react'
+
+// On map click (add VIEWPOINT_DIRECTION_LAYER_ID to interactiveLayerIds):
+getViewpointSession().actions.open({ viewpoints: [viewpointFromPoint([lng, lat])] })
+// or for a clicked line: open({ viewpoints: viewpointsFromLine(line, [lng, lat]), line })
+
+const viewpoints = useViewpoints()
+const { suggestions } = useViewSuggestions(viewpoints, { maxAgeYears: 2 })
+// <ViewpointLayer viewpoints={viewpoints} suggestions={suggestions} activeDirectionKey={…} zoom={zoom} />
+// <FloatingPhotoViewer suggestions={suggestions} … >{viewer}</FloatingPhotoViewer>
+```
+
+Render `FloatingPhotoViewer` inside a positioned map container. Photos from suggestions open in
+`StreetLevelImageryViewer` with `lookAtBearing={suggestion.direction.bearing}`.
+
+A host without suggested views leaves out `suggestions`, `activeDirectionKey` and `onSelectSuggestion`; the chips are then not shown. Its own buttons and links go in `titleActions`. They keep their size next to a long title and do not start a drag.
+
+For a free window over the whole page, use the viewport as container and let the box leave it until a share of it shows:
+
+```tsx
+<FloatingPhotoViewer position="fixed" minVisibleShare={0.2} onClose={close} title="Photo">
+  {viewer}
+</FloatingPhotoViewer>
+```
+
+`position="fixed"` (default `absolute`) needs an ancestor without `transform` or `filter`, and a stacking order that puts the box above the page. `minVisibleShare` (0–1) never lets the box go over the top edge, because the header is what moves it. The limit also holds when the box or the container changes size, and a minimized viewer stays within reach. Without `minVisibleShare` the box keeps 8px from the right and bottom edge.
+
+To ask "who sees this spot" instead of "what looks north here", use `usePhotosLookingAt`: flat photos within `maxDistanceMeters` (50) whose heading points at the place within `maxFlatAngleDeg` (35), and 360° photos within the distance, best first. Each candidate has `bearingToPlace`.
+
+```tsx
+const [place, setPlace] = useState<LngLat | null>(null) // set on map click
+const [index, setIndex] = useState(0)
+const { candidates } = usePhotosLookingAt(place, { maxAgeYears: 2, enabled: place != null })
+const candidate = candidates[index]
+
+{candidate ? (
+  <FloatingPhotoViewer
+    title="Photos of this place"
+    onClose={() => setPlace(null)}
+    step={{
+      onPrevious: index > 0 ? () => setIndex(index - 1) : undefined,
+      onNext: index < candidates.length - 1 ? () => setIndex(index + 1) : undefined,
+      previousLabel: 'Previous photo',
+      nextLabel: 'Next photo',
+    }}
+  >
+    <StreetLevelImageryViewer
+      photo={candidate.photo}
+      lookAtBearing={candidate.bearingToPlace}
+      … />
+  </FloatingPhotoViewer>
+) : null}
+```
+
+The list needs no chips: `step` gives the `<` `>` buttons and Alt + arrow keys. `lookAtBearing` turns Mapillary 360° photos only. The pure ranking is `rankPhotosLookingAt(place, photos, options)` in the core package.
+
+For a link that opens the same photo with the same zoom and pan, keep the view the viewer reports and pass it to `providerExternalLink`:
+
+```tsx
+const [view, setView] = useState<PhotoView | null>(null)
+
+<StreetLevelImageryViewer onViewerView={setView} … />
+<a href={providerExternalLink(photo, view)}>Open on Mapillary</a>
+```
+
+`onViewerView` runs when the view has stopped moving and when the photo changes, not during a drag, for Mapillary (`x`, `y`, `zoom`) and Panoramax (`heading`, `pitch`, `zoom`). A view of another photo is ignored by the link. What a link shows also depends on the size of the window it opens in. Panoramax in the default panel: the viewers differ, so direction and height of the view carry over, not every pixel.
+
+**Tailwind:** components use Tailwind classes. Tailwind does not scan `node_modules`, so add to your CSS:
+
+```css
+@source '../node_modules/@osm-editor-kit/street-imagery-react';
+```
+
+## Look at a place, outline detections
+
+```tsx
+import { JUNCTION_DETECTION_GROUPS, matchesAnyGroup, PLACE_TARGET } from '@osm-editor-kit/street-imagery'
+import {
+  StreetLevelImageryViewer,
+  useMapillaryImageDetections,
+  useMapillaryMapFeatureImages,
+  useMapillaryMapFeaturesNear,
+} from '@osm-editor-kit/street-imagery-react'
+
+// Turn any Mapillary photo (360° or flat) towards a junction:
+<StreetLevelImageryViewer photo={photo} lookAt={{ lngLat: node, shape: PLACE_TARGET }} … />
+
+// Turn to a detected sign or object and outline it. `value` lets the viewer find the image's own
+// detection when Mapillary linked no outline for this image:
+const { data } = useMapillaryMapFeatureImages(featureId)
+<StreetLevelImageryViewer photo={…} lookAt={{ lngLat: data.feature.lngLat, value: data.feature.value }} … />
+
+// Features around a point, and only the outlines you care about in the shown image:
+const { data: features } = useMapillaryMapFeaturesNear(node, { radiusMeters: 40 })
+const { data: detections } = useMapillaryImageDetections(photo.photoId, {
+  filter: matchesAnyGroup(JUNCTION_DETECTION_GROUPS),
+  filterKey: 'junction',
+})
+<StreetLevelImageryViewer photo={photo} outlines={detections?.map((d) => ({ id: d.id, outline: d.outline }))} … />
+```
+
+- Map layers: `filter.mapFeatureValue` limits which signs/objects are drawn: `signGroupFilter(['parking', 'bike'])` for sign groups, or `matchesAnyGroup(…)`.
+- Suggested views: `useViewSuggestions(viewpoints, { sources: [mapillaryPhotoSource, streetViewPhotoSource] })`.
+- `turnMapillaryViewerTo` / `setMapillaryViewerOutlines` (from `@osm-editor-kit/street-imagery-react/viewer-panels`) work on a mapillary-js `Viewer` you own.
+
+## A selected sign: viewer, bar and map highlight
+
+Keep the selected sign (`featureId`) and its shown photo in your own state or URL:
+
+```tsx
+const { data, shownImage, firstImage } = useSelectedMapillaryFeature({
+  featureId,
+  shownPhotoId, // the photo the viewer shows now
+  minCapturedAt: fromMs, // optional: open the best photo from this time on
+})
+// Open `firstImage` first: showPhoto(targetImageToPhoto(firstImage))
+<MapillaryFeatureBar data={data} shownImage={shownImage} onShow={(image) => showPhoto(targetImageToPhoto(image))} />
+<StreetLevelImageryViewer lookAt={{ lngLat: data.feature.lngLat, outline: shownImage?.outline, value: data.feature.value }} … />
+// On the map, after StreetLevelImagerySourcesAndLayers: the sign's halo and a line from the camera
+<SelectedMapFeatureLayer data={data} shownImage={shownImage} providers={providers} bbox={bbox} zoom={zoom} />
+```
+
+A click on a sign dot: `queryStreetImageryFeatures(event).find((hit) => hit.kind === 'mapFeature')?.featureId`.
+
+## Date filter with a slider
+
+`PhotoDateRangeFilter` is the date filter of iD's photo panel as a controlled component: one slider with two handles on a scale that gives recent years more room. It works on plain `{ from?, to? }` days (`YYYY-MM-DD`), the same `DateRange` the layers take as `filter.date`.
+
+```tsx
+const { photos } = useAllProviderPhotos(providers, bbox, zoom) // no date: all photos in view
+
+<PhotoDateRangeFilter
+  value={date}
+  onChange={setDate} // on release of a handle, not while dragging
+  capturedAt={photos.map((photo) => photo.capturedAt)} // marks: where photos are
+  yearLines={[1, 2, 3, 4]} // lines with a label; a click shows the last N years
+  recommendedMaxAgeYears={2} // this line is red
+  markers={[{ date: '2024-04-01', label: 'Survey start' }]} // dashed lines for fixed dates
+  dateInputs="collapsed" // exact days: 'collapsed' (default), 'open' or 'none'
+/>
+```
+
+A click or tap on the chart moves the nearer handle to that exact place, and a press on the chart can go on as a drag. Handles on the same spot come apart in the direction of the drag. Handles stay separate targets for mouse and touch, at least 44px high and wide, and a vertical swipe on a phone scrolls the page. A handle at its end means no limit, so the left end also shows photos older than the slider spans (`maxYears`, default 10). The scale itself is in the core package (`dateSliderPosition`, `dateSliderBins`, …) for a host that draws its own chart. The texts are in `messages.dateFilter`.
+
+## Pick a place on the map to open elsewhere
+
+A button arms a location opener (see `@osm-editor-kit/street-imagery`), the next map click opens the clicked place in that service and disarms; Escape cancels.
+
+```tsx
+import {
+  LocationPickOnMap,
+  useArmedLocationOpenerId,
+  useLocationPickActions,
+} from '@osm-editor-kit/street-imagery-react'
+
+const armed = useArmedLocationOpenerId() // show it: pressed button, crosshair cursor, a hint on the map
+const { toggle, disarm } = useLocationPickActions()
+
+{
+  getLocationOpeners().map((opener) => (
+    <button key={opener.id} aria-pressed={armed === opener.id} onClick={() => toggle(opener.id)}>
+      Open in {opener.label}
+    </button>
+  ))
+}
+;<Map cursor={armed ? 'crosshair' : undefined}>
+  <LocationPickOnMap />
+</Map>
+```
+
+The map's own click handlers still run; skip them while `armed` is set if the click should only open the place. When the place is known already (a selected feature), call `openLocationInNewTab` directly instead.
+
+## Photo details dialog (optional)
+
+A modal with everything known about the shown photo: capture, camera, position, source and raw EXIF. It lives in its own entry, so apps that do not import it do not bundle it.
+
+```tsx
+import { FloatingViewerInfoButton } from '@osm-editor-kit/street-imagery-react'
+import { PHOTO_DETAILS_LABELS, PhotoDetailsDialog } from '@osm-editor-kit/street-imagery-react/photo-details'
+
+<FloatingPhotoViewer
+  titleActions={<FloatingViewerInfoButton label={PHOTO_DETAILS_LABELS.en.open} onClick={() => setOpen(true)} />}
+  …
+/>
+<PhotoDetailsDialog open={open} photo={viewerPhoto} onClose={() => setOpen(false)} />
+```
+
+`viewerPhoto` is what `onViewerPhoto` of the viewer gives (Mapillary, Panoramax).

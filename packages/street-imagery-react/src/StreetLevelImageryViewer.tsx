@@ -1,0 +1,111 @@
+import type { NormalizedPhoto, PhotoView } from '@osm-editor-kit/street-imagery'
+import { lazy, Suspense, type ComponentType } from 'react'
+import { useStreetImageryI18n } from './i18n/StreetImageryLocaleProvider'
+import type { MapillaryLookAt, MapillaryViewerOutline } from './panels/mapillaryLookAt'
+import type { PanoramaxPanelProps } from './panels/PanoramaxPanel'
+import type { StreetImageryPhotoSelection } from './types'
+
+const MapillaryPanel = lazy(() =>
+  import('./panels/MapillaryPanel').then((module) => ({
+    default: module.MapillaryPanel,
+  })),
+)
+
+const PanoramaxPanel = lazy(() =>
+  import('./panels/PanoramaxPanel').then((module) => ({
+    default: module.PanoramaxPanel,
+  })),
+)
+
+type StreetLevelImageryViewerProps = {
+  photo: NormalizedPhoto
+  groupPhotos: NormalizedPhoto[]
+  onPhotoSelected: (selection: StreetImageryPhotoSelection) => void
+  onEaseMapToPoint: (lng: number, lat: number) => void
+  /** Mapillary, Panoramax: full photo data (creator, licence …) for each image the viewer shows. */
+  onViewerPhoto?: (photo: NormalizedPhoto) => void
+  /**
+   * Mapillary, Panoramax: the view inside the shown photo (pan and zoom), after it has stopped
+   * moving and when the photo changes. Pass it to `providerExternalLink` for a link that opens the
+   * same view on the provider's site.
+   */
+  onViewerView?: (view: PhotoView) => void
+  /** Mapillary 360° photos: initial view bearing (e.g. a suggested view direction). */
+  lookAtBearing?: number | null
+  /** Mapillary: turn and zoom to a place (sign, traffic light, junction); wins over `lookAtBearing`. */
+  lookAt?: MapillaryLookAt | null
+  /** Mapillary: outlines to draw in the shown image. */
+  outlines?: MapillaryViewerOutline[]
+  /**
+   * Hide the viewer's own attribution; the host must then show creator and licence itself, from
+   * `onViewerPhoto`.
+   */
+  hideAttribution?: boolean
+  /**
+   * Another panel for Panoramax pictures, e.g. `PanoramaxWebViewerPanel` of the
+   * `panoramax-web-viewer` entry (Panoramax's own viewer). Default: the Mapillary viewer shows
+   * them too.
+   */
+  panoramaxPanel?: ComponentType<PanoramaxPanelProps>
+}
+
+const ViewerPanelPlaceholder = () => {
+  const { messages } = useStreetImageryI18n()
+  return (
+    <div className="flex min-h-48 animate-pulse items-center justify-center rounded-lg border border-slate-200 bg-slate-100">
+      <span className="text-sm text-slate-500">{messages.viewer.loading}</span>
+    </div>
+  )
+}
+
+export const StreetLevelImageryViewer = ({
+  photo,
+  groupPhotos,
+  onPhotoSelected,
+  onEaseMapToPoint,
+  onViewerPhoto,
+  onViewerView,
+  lookAtBearing,
+  lookAt,
+  outlines,
+  hideAttribution,
+  panoramaxPanel: PanoramaxPanelOverride,
+}: StreetLevelImageryViewerProps) => {
+  if (photo.providerId === 'mapillary') {
+    return (
+      <Suspense fallback={<ViewerPanelPlaceholder />}>
+        <MapillaryPanel
+          groupPhotos={groupPhotos}
+          hideAttribution={hideAttribution}
+          onEaseMapToPoint={onEaseMapToPoint}
+          onPhotoSelected={onPhotoSelected}
+          lookAt={lookAt}
+          lookAtBearing={lookAtBearing}
+          outlines={outlines}
+          onViewerPhoto={onViewerPhoto}
+          onViewerView={onViewerView}
+          photo={photo}
+        />
+      </Suspense>
+    )
+  }
+
+  if (photo.providerId === 'panoramax') {
+    const Panel = PanoramaxPanelOverride ?? PanoramaxPanel
+    return (
+      <Suspense fallback={<ViewerPanelPlaceholder />}>
+        <Panel
+          groupPhotos={groupPhotos}
+          hideAttribution={hideAttribution}
+          onViewerPhoto={onViewerPhoto}
+          onViewerView={onViewerView}
+          onEaseMapToPoint={onEaseMapToPoint}
+          onPhotoSelected={onPhotoSelected}
+          photo={photo}
+        />
+      </Suspense>
+    )
+  }
+
+  return null
+}

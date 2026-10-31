@@ -1,0 +1,91 @@
+{
+  "name": "@osm-editor-kit/street-imagery-react",
+  "version": "0.1.0-alpha.14",
+  "description": "React MapLibre layers and photo viewers for street-level imagery providers.",
+  "homepage": "https://github.com/osmberlin/street-space-editor/tree/main/packages/street-imagery-react",
+  "license": "MIT",
+  "author": "Tobias Jordans",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/osmberlin/street-space-editor.git",
+    "directory": "packages/street-imagery-react"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./photo-details": "./src/photo-details/index.ts",
+    "./viewer-panels": "./src/viewer-panels/index.ts",
+    "./panoramax-web-viewer": "./src/panoramax-web-viewer/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  },
+  "scripts": {
+    "build": "tsup && rm -f .tsbuildinfo && tsc -p tsconfig.build.json",
+    "type-check": "tsc --noEmit",
+    "test-run": "bun test --pass-with-no-tests src",
+    "prepublishOnly": "bun run build && bun ../../scripts/package-exports-for-publish.ts",
+    "postpublish": "bun ../../scripts/package-exports-restore.ts",
+    "prepack": "bun ../../scripts/package-exports-for-publish.ts",
+    "postpack": "bun ../../scripts/package-exports-restore.ts"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@panoramax/web-viewer": "^5",
+    "@tanstack/react-query": "^5.85.5",
+    "@types/babel__core": "^7.20.5",
+    "@types/geojson": "^7946.0.16",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "babel-plugin-react-compiler": "^19.1.0-rc.2",
+    "bun-types": "^1.2.20",
+    "mapillary-js": "^4.1.2",
+    "maplibre-gl": "^6.7.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-map-gl": "^8.1.3",
+    "tsup": "^8.5.1",
+    "typescript": "^7.0.0",
+    "zustand": "^5.0.7"
+  },
+  "peerDependencies": {
+    "@osm-editor-kit/street-imagery": "workspace:*",
+    "@panoramax/web-viewer": "^5",
+    "@tanstack/react-query": "^5",
+    "mapillary-js": "^4",
+    "maplibre-gl": "^6",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-map-gl": "^8",
+    "zustand": "^5"
+  },
+  "peerDependenciesMeta": {
+    "@panoramax/web-viewer": {
+      "optional": true
+    }
+  },
+  "publishExports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./photo-details": {
+      "types": "./dist/photo-details/index.d.ts",
+      "import": "./dist/photo-details.js"
+    },
+    "./viewer-panels": {
+      "types": "./dist/viewer-panels/index.d.ts",
+      "import": "./dist/viewer-panels.js"
+    },
+    "./panoramax-web-viewer": {
+      "types": "./dist/panoramax-web-viewer/index.d.ts",
+      "import": "./dist/panoramax-web-viewer.js"
+    },
+    "./package.json": "./package.json"
+  }
+}
