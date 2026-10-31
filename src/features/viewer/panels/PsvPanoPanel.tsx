@@ -115,12 +115,19 @@ export const PsvPanoPanel = ({ photo, groupPhotos }: PsvPanoPanelProps) => {
   const pendingHfovRef = useRef<number | null>(null)
   const currentHeadingRef = useRef<number | null>(photo.heading)
   const [isLoading, setIsLoading] = useState(true)
-  const [isError, setIsError] = useState(false)
+  const [failedPhotoId, setFailedPhotoId] = useState<string | null>(null)
+  const [setupAttempt, setSetupAttempt] = useState(0)
   const { t } = useAppI18n()
   const { updateSelected } = useAppSearchNavigation()
   const actions = useViewerActions()
   const easeMainMapToPoint = useEaseMainMapToPoint()
-  const initialPhotoIdRef = useRef(photo.photoId)
+
+  // Another photo of the sequence gets a new try: the failure may have been a passing rate limit.
+  if (failedPhotoId != null && failedPhotoId !== photo.photoId) {
+    setFailedPhotoId(null)
+    setIsLoading(true)
+    setSetupAttempt(setupAttempt + 1)
+  }
 
   useEffect(
     function syncPhotoRef() {
@@ -150,21 +157,31 @@ export const PsvPanoPanel = ({ photo, groupPhotos }: PsvPanoPanelProps) => {
           return
         }
 
-        const { nodes, photoById } = await buildTourNodes(groupPhotosRef.current)
+        // The group holds the photos near the click and can miss the selected one.
+        const selectedPhoto = photoRef.current
+        const group = groupPhotosRef.current
+        const { nodes, photoById } = await buildTourNodes(
+          group.some((entry) => entry.photoId === selectedPhoto.photoId)
+            ? group
+            : [selectedPhoto, ...group],
+        )
         if (cancelled) {
+          return
+        }
+        if (photoRef.current.photoId !== selectedPhoto.photoId) {
+          setSetupAttempt((attempt) => attempt + 1)
           return
         }
 
         photoByIdRef.current = photoById
         builtNodeIdsRef.current = new Set(nodes.map((node) => node.id))
 
-        const startNodeId = nodes.some((node) => node.id === initialPhotoIdRef.current)
-          ? initialPhotoIdRef.current
+        const startNodeId = nodes.some((node) => node.id === selectedPhoto.photoId)
+          ? selectedPhoto.photoId
           : nodes[0]?.id
 
-        if (!startNodeId || nodes.length === 0) {
-          setIsLoading(false)
-          return
+        if (!startNodeId) {
+          throw new Error('No panorama for this photo')
         }
 
         const viewer = new Viewer({
@@ -289,8 +306,11 @@ export const PsvPanoPanel = ({ photo, groupPhotos }: PsvPanoPanelProps) => {
           cleanup = dispose
         })
         .catch(() => {
+          if (cancelled) {
+            return
+          }
           setIsLoading(false)
-          setIsError(true)
+          setFailedPhotoId(photoRef.current.photoId)
         })
 
       return () => {
@@ -298,7 +318,7 @@ export const PsvPanoPanel = ({ photo, groupPhotos }: PsvPanoPanelProps) => {
         cleanup?.()
       }
     },
-    [actions, easeMainMapToPoint, updateSelected],
+    [actions, easeMainMapToPoint, setupAttempt, updateSelected],
   )
 
   useEffect(
@@ -320,7 +340,10 @@ export const PsvPanoPanel = ({ photo, groupPhotos }: PsvPanoPanelProps) => {
         return
       }
 
+      // A photo of the sequence outside this tour: build a tour around it.
       if (!builtNodeIdsRef.current.has(photo.photoId)) {
+        setIsLoading(true)
+        setSetupAttempt((attempt) => attempt + 1)
         return
       }
 
@@ -339,10 +362,10 @@ export const PsvPanoPanel = ({ photo, groupPhotos }: PsvPanoPanelProps) => {
       <div ref={containerRef} className="h-full w-full" />
       {isLoading ? (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-sm text-slate-300">
-          Loading panorama…
+          {t.viewer.loadingViewer}
         </div>
       ) : null}
-      {isError ? (
+      {failedPhotoId != null ? (
         <div className="absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-slate-300">
           {t.viewer.imageUnavailable}
         </div>
