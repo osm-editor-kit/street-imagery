@@ -9,14 +9,10 @@ import {
   type ViewerNavigableEvent,
 } from 'mapillary-js'
 import { useEffect, useEffectEvent, useRef } from 'react'
+import type { MapillaryLookAt, MapillaryViewerOutline } from '../mapillary/lookAt'
 import type { StreetImageryPhotoSelection } from '../types'
 import { useViewerActions } from '../useViewerStore'
-import {
-  setMapillaryViewerOutlines,
-  turnMapillaryViewerTo,
-  type MapillaryLookAt,
-  type MapillaryViewerOutline,
-} from './mapillaryLookAt'
+import { setMapillaryViewerOutlines, turnMapillaryViewerTo } from './mapillaryLookAt'
 import { watchMapillaryJsView } from './photoView'
 
 type MapillaryPanelProps = {

@@ -11,7 +11,7 @@ React and MapLibre layers, hooks and photo viewers for street-level imagery (Map
 npm install @osm-editor-kit/street-imagery-react
 ```
 
-Peer dependencies to install as well: `@osm-editor-kit/street-imagery`, `react`, `react-dom`, `maplibre-gl`, `react-map-gl`, `@tanstack/react-query`, `zustand`, `mapillary-js`. `@panoramax/web-viewer` is optional (see below). Wrap your app in a TanStack `QueryClientProvider`; the hooks use it.
+Peer dependencies to install as well: `@osm-editor-kit/street-imagery`, `react`, `react-dom`, `maplibre-gl`, `react-map-gl`, `@tanstack/react-query`, `zustand`. `mapillary-js` is optional: you only need it for the photo viewer (the `viewer` and `viewer-panels` entries). `@panoramax/web-viewer` is optional too (see below). Wrap your app in a TanStack `QueryClientProvider`; the hooks use it.
 
 ## What it does
 
@@ -28,11 +28,11 @@ Peer dependencies to install as well: `@osm-editor-kit/street-imagery`, `react`,
 ```tsx
 import {
   StreetLevelImagerySourcesAndLayers,
-  StreetLevelImageryViewer,
   useMapViewportBbox,
   queryStreetImageryFeatures,
   streetImageryInteractiveLayerIds,
 } from '@osm-editor-kit/street-imagery-react'
+import { StreetLevelImageryViewer } from '@osm-editor-kit/street-imagery-react/viewer'
 import { createStreetImageryConfig } from '@osm-editor-kit/street-imagery'
 
 // Inside <Map id="main">: the bbox follows the map
@@ -66,7 +66,7 @@ const hits = queryStreetImageryFeatures(event)
 
 **Mapillary:** `createStreetImageryConfig({ mapillaryToken })` or `setStreetImageryConfig` at boot (`@osm-editor-kit/street-imagery`). **Panoramax:** nothing to set up, the Mapillary viewer shows its pictures too (see below).
 
-Also: `useAllProviderPhotos`, `useProviderPhotos` / `useProviderSequences` / `useProviderMapFeatures`, `usePhotoThumbnail` / `usePhotoFullUrl`, `resolveSelectedSequence`, `StreetLevelImageryViewCone`, `useViewerBearing` / `useViewerActions`. The panels themselves (`MapillaryPanel`, `PanoramaxPanel`) are in `@osm-editor-kit/street-imagery-react/viewer-panels`; `StreetLevelImageryViewer` loads them on demand, so `mapillary-js` is only loaded when a photo is shown.
+Also: `useAllProviderPhotos`, `useProviderPhotos` / `useProviderSequences` / `useProviderMapFeatures`, `usePhotoThumbnail` / `usePhotoFullUrl`, `resolveSelectedSequence`, `StreetLevelImageryViewCone`, `useViewerBearing` / `useViewerActions`. The panels themselves (`MapillaryPanel`, `PanoramaxPanel`) are in `@osm-editor-kit/street-imagery-react/viewer-panels`. `StreetLevelImageryViewer` is in `@osm-editor-kit/street-imagery-react/viewer` and loads them on demand, so `mapillary-js` is only loaded when a photo is shown.
 
 ### Panoramax in the Mapillary viewer
 
@@ -181,11 +181,11 @@ const [view, setView] = useState<PhotoView | null>(null)
 ```tsx
 import { JUNCTION_DETECTION_GROUPS, matchesAnyGroup, PLACE_TARGET } from '@osm-editor-kit/street-imagery'
 import {
-  StreetLevelImageryViewer,
   useMapillaryImageDetections,
   useMapillaryMapFeatureImages,
   useMapillaryMapFeaturesNear,
 } from '@osm-editor-kit/street-imagery-react'
+import { StreetLevelImageryViewer } from '@osm-editor-kit/street-imagery-react/viewer'
 
 // Turn any Mapillary photo (360° or flat) towards a junction:
 <StreetLevelImageryViewer photo={photo} lookAt={{ lngLat: node, shape: PLACE_TARGET }} … />

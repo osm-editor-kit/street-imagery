@@ -29,6 +29,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     'photo-details': 'src/photo-details/index.ts',
+    viewer: 'src/viewer/index.ts',
     'viewer-panels': 'src/viewer-panels/index.ts',
     'panoramax-web-viewer': 'src/panoramax-web-viewer/index.ts',
   },

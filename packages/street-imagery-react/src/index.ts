@@ -9,7 +9,6 @@ export {
   type PhotoFilter,
 } from './StreetLevelImagerySourcesAndLayers'
 export { StreetLevelImageryViewCone, VIEW_SHAPE_FILL_OPACITY } from './StreetLevelImageryViewCone'
-export { StreetLevelImageryViewer } from './StreetLevelImageryViewer'
 export type { StreetImageryPhotoSelection } from './types'
 export {
   queryStreetImageryFeatures,
@@ -64,8 +63,9 @@ export {
   type PhotosLookingAtOptions,
   type PhotosLookingAtResult,
 } from './viewpoints/usePhotosLookingAt'
-// `MapillaryPanel`, `PanoramaxPanel`, `turnMapillaryViewerTo` …: see the `viewer-panels` entry.
-export type { MapillaryLookAt, MapillaryViewerOutline } from './panels/mapillaryLookAt'
+// `StreetLevelImageryViewer`: see the `viewer` entry. `MapillaryPanel`, `PanoramaxPanel`,
+// `turnMapillaryViewerTo` …: see the `viewer-panels` entry.
+export type { MapillaryLookAt, MapillaryViewerOutline } from './mapillary/lookAt'
 export {
   useMapillaryImageDetections,
   useMapillaryMapFeatureImages,

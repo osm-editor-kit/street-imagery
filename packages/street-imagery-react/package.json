@@ -21,6 +21,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./photo-details": "./src/photo-details/index.ts",
+    "./viewer": "./src/viewer/index.ts",
     "./viewer-panels": "./src/viewer-panels/index.ts",
     "./panoramax-web-viewer": "./src/panoramax-web-viewer/index.ts"
   },
@@ -71,6 +72,9 @@
   "peerDependenciesMeta": {
     "@panoramax/web-viewer": {
       "optional": true
+    },
+    "mapillary-js": {
+      "optional": true
     }
   },
   "publishExports": {
@@ -81,6 +85,10 @@
     "./photo-details": {
       "types": "./dist/photo-details/index.d.ts",
       "import": "./dist/photo-details.js"
+    },
+    "./viewer": {
+      "types": "./dist/viewer/index.d.ts",
+      "import": "./dist/viewer.js"
     },
     "./viewer-panels": {
       "types": "./dist/viewer-panels/index.d.ts",

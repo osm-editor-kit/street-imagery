@@ -1,7 +1,7 @@
 import type { NormalizedPhoto, PhotoView } from '@osm-editor-kit/street-imagery'
 import { lazy, Suspense, type ComponentType } from 'react'
 import { useStreetImageryI18n } from './i18n/StreetImageryLocaleProvider'
-import type { MapillaryLookAt, MapillaryViewerOutline } from './panels/mapillaryLookAt'
+import type { MapillaryLookAt, MapillaryViewerOutline } from './mapillary/lookAt'
 import type { PanoramaxPanelProps } from './panels/PanoramaxPanel'
 import type { StreetImageryPhotoSelection } from './types'
 

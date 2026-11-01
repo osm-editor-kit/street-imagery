@@ -1,10 +1,7 @@
 import type { NormalizedPhoto } from '@osm-editor-kit/street-imagery'
 import type { ProviderId } from '@osm-editor-kit/street-imagery'
-import {
-  StreetLevelImageryViewer,
-  type MapillaryLookAt,
-} from '@osm-editor-kit/street-imagery-react'
-import { useViewerActions } from '@osm-editor-kit/street-imagery-react'
+import { type MapillaryLookAt, useViewerActions } from '@osm-editor-kit/street-imagery-react'
+import { StreetLevelImageryViewer } from '@osm-editor-kit/street-imagery-react/viewer'
 import { lazy, Suspense, useEffect } from 'react'
 import { useAppSearchNavigation } from '@/app/searchNavigation'
 import { useEaseMainMapToPoint } from '@/features/map/useStableMainMapRefs'
