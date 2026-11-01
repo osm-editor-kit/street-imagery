@@ -1,5 +1,16 @@
 # @osm-editor-kit/street-imagery-react
 
+## 1.1.0
+
+### Minor Changes
+
+- 3068d84: - `mapillary-js` is now an optional peer dependency. Apps that only use the map layers, hooks and filters no longer need it.
+  - `StreetLevelImageryViewer` moved out of the main entry. Import it from `@osm-editor-kit/street-imagery-react/viewer`. It still loads the panels on demand. Apps that use it need `mapillary-js` installed.
+
+### Patch Changes
+
+- eac22df: - `@types/geojson` is now a dependency: the public types use it, so TypeScript projects no longer need to install it themselves.
+
 ## 1.0.0
 
 ### Major Changes
@@ -127,26 +138,22 @@
 - b756bdc: **Breaking: providers are registered, and bundled only when registered.**
 
   ### @osm-editor-kit/street-imagery
-
   - Each provider's fetching code is its own entry: `@osm-editor-kit/street-imagery/providers/mapillary`, `/mapillary-signs`, `/mapillary-map-features`, `/panoramax`, `/kartaview`, `/mapilio`, `/streetside`, `/vegbilder`, and `/providers/all` (`ALL_PROVIDER_ADAPTERS`).
   - Call `registerProviderAdapters([...])` once at boot. `adapterById` holds only the registered adapters; a provider without one shows no map data.
   - `PROVIDERS` / `providerById` are static and complete without any adapter. `ProviderAdapter` now has only `id` and the fetch functions; names, colours, zoom limits, `coverage`, `coverageTiles`, `clickOnly` are in `ProviderMeta`. `PROVIDER_ADAPTERS`, `streetViewAdapter` and `lookaroundAdapter` are gone.
   - Sizes of the package's code in an app (minified, with its vector-tile dependencies): "open in …" links only 16 kB, Mapillary and Panoramax 27 kB, all providers 36 kB. Before, every app got 35 kB.
 
   ### @osm-editor-kit/street-imagery-react
-
   - `"sideEffects": false`, so bundlers drop the components an app does not use.
   - The texts of `MapillaryFeatureBar` moved out of the package-wide messages into `MAPILLARY_FEATURE_BAR_LABELS` (override with the `labels` prop), so the German sign names are bundled only with the feature bar. `messages.feature` is gone.
 
 - 6e7ccff: **Street views: view buttons that count and step through their photos.**
 
   ### @osm-editor-kit/street-imagery
-
   - A viewpoint with role `here` and a bearing (a click on a street) looks four ways: `forward`, `right`, `back`, `left` (`ViewDirectionKind` has `right` and `left` now).
   - `mapillaryTilePhotoSource` (entry `/providers/mapillary`): a `ViewpointPhotoSource` that picks from the photos shown on the map. The Graph API radius search returns at most 50 images and missed nearby photos in dense areas.
 
   ### @osm-editor-kit/street-imagery-react
-
   - `FloatingPhotoViewer`: the view buttons have two lines (arrow, compass point and photo count; date of the shown photo) and no "Views" label. A click on the active button shows the view's next photo. `onSelectSuggestion(suggestion, candidate)` gets the photo to show; pass `shownPhotoId`.
   - `messages.compass` (eight points) replaces the direction names on the buttons; `messages.viewer.views` is gone, `messages.viewer.nextPhotoOfView` is new.
   - `PhotoCount`: picture icon with `index/total`, used by the view buttons and the day buttons of `MapillaryFeatureBar`.
@@ -170,7 +177,6 @@
   - Breaking, infra3D: the config takes a list, `infra3d: { projects: [{ uid, name }] }`, and each project gets its own opener (`infra3d:<uid>`, "infra3D <name>"). `getLocationOpeners()` and `findLocationOpener(id)` replace `locationOpenerById`; `LOCATION_OPENERS` holds the photo providers only.
 
   ### @osm-editor-kit/street-imagery-react
-
   - **English and German texts**: wrap the app in `<StreetImageryLocaleProvider locale="de">`; single texts can be overridden with `messages`. Without a provider the texts are English.
   - `MapillaryFeatureBar`: a sign or object with its icon, name and one button per capture day.
   - `PhotoDate`: month and year, with the full date and the age in the tooltip. The suggested-view chips use it.
@@ -190,7 +196,6 @@
   - **infra3D**: `buildInfra3dUrl` (`jumpTo`, `lookAt`, `imageKey`) and an opener; the project comes from `createStreetImageryConfig({ infra3d: { projectUid } })`.
 
   ### @osm-editor-kit/street-imagery-react
-
   - `LocationPickOnMap`, `useArmedLocationOpenerId`, `useLocationPickActions`: arm an opener, the next map click opens the clicked place.
 
 - Updated dependencies [c09920c]
@@ -202,7 +207,6 @@
 ### Patch Changes
 
 - ### @osm-editor-kit/street-imagery
-
   - **Mapillary map features**: `fetchMapFeatureImages` (a sign or object with all its images by capture day and linked outlines), `fetchMapillaryMapFeaturesInBbox`, `bboxAround`.
   - **Detections**: `fetchImageDetections`, `decodeDetectionOutline`.
   - **Target view**: `bestTargetImage`, `targetImagesByDay`, `viewFromOutline` / `viewFromLocation` / `viewFromFlatCamera`, `SIGN_TARGET`, `PLACE_TARGET`.
@@ -215,7 +219,6 @@
   - Includes the viewpoint and dense-area changes of 0.1.0-alpha.3, which was not published.
 
   ### @osm-editor-kit/street-imagery-react
-
   - `lookAt` and `outlines` on `MapillaryPanel` / `StreetLevelImageryViewer`; `turnMapillaryViewerTo`, `setMapillaryViewerOutlines`.
   - Hooks `useMapillaryMapFeatureImages`, `useMapillaryMapFeaturesNear`, `useMapillaryImageDetections`.
   - `filter.mapFeatureValue` on `StreetLevelImagerySourcesAndLayers`; `sources` on `useViewSuggestions`.
@@ -229,14 +232,12 @@
 ### Patch Changes
 
 - ### @osm-editor-kit/street-imagery
-
   - **Viewpoints**: `viewpointFromPoint` (looks N/E/S/W), `viewpointsFromLine` (start, click point, end; forward + back) and `viewpointsIntoNode` (one per approaching street, looking into a junction).
   - **Direction-aware photo ranking**: `rankPhotosForDirection` / `buildViewSuggestions` score heading, position behind the viewpoint, distance and recency; newer flat photos beat older panos unless only panos are allowed; optional max age.
   - **Mapillary radius search**: `fetchMapillaryImagesNearPoint` (Graph API, up to 50 images within 50 m).
   - Geometry helpers: `bearingDeg`, `destinationPoint`, `snapToLine`, `pointAlongLine`, `angleDiffDeg`.
 
   ### @osm-editor-kit/street-imagery-react
-
   - **FloatingPhotoViewer**: movable, resizable, minimizable photo box over the map with suggested-view chips, back/forward history (`[` / `]`, Esc closes), status, footer and drawer. Consumers using Tailwind must add `@source` for this package.
   - **ViewpointLayer**: viewpoints, clickable view directions (`VIEWPOINT_DIRECTION_LAYER_ID`) and the clicked line.
   - **useViewSuggestions** and a viewpoint session store (`useViewpoints`, `useCurrentHistoryEntry`, `getViewpointSession`, …).
@@ -262,12 +263,10 @@
   - Apps that depend on this package can adopt MapLibre 6 without version skew against other OSM Editor Kit map packages.
 
   ### @osm-editor-kit/street-imagery
-
   - Development and integration tests target **maplibre-gl 6**, matching the rest of the street-imagery family.
   - Street View metadata still returns no result when no Google Maps API key is configured (behavior unchanged; test coverage improved).
 
   ### @osm-editor-kit/street-imagery-react
-
   - **Peer dependency** on `maplibre-gl` is now **^6** — upgrade your app’s MapLibre to v6 when you bump this package.
   - React street-imagery UI stays aligned with MapLibre 6 used by `osm-maplibre` and `street-imagery`.
 

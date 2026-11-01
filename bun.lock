@@ -85,7 +85,7 @@
     },
     "packages/street-imagery-react": {
       "name": "@osm-editor-kit/street-imagery-react",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "dependencies": {
         "@types/geojson": "^7946.0.16",
       },
@@ -120,6 +120,7 @@
       },
       "optionalPeers": [
         "@panoramax/web-viewer",
+        "mapillary-js",
       ],
     },
   },

@@ -1,6 +1,6 @@
 {
   "name": "@osm-editor-kit/street-imagery-react",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "React MapLibre layers and photo viewers for street-level imagery providers.",
   "homepage": "https://osm-editor-kit.github.io/street-imagery/",
   "bugs": {
