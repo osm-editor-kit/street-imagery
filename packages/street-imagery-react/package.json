@@ -36,12 +36,14 @@
     "prepack": "bun ../../scripts/package-exports-for-publish.ts",
     "postpack": "bun ../../scripts/package-exports-restore.ts"
   },
+  "dependencies": {
+    "@types/geojson": "^7946.0.16"
+  },
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@panoramax/web-viewer": "^5",
     "@tanstack/react-query": "^5.85.5",
     "@types/babel__core": "^7.20.5",
-    "@types/geojson": "^7946.0.16",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "babel-plugin-react-compiler": "^19.1.0-rc.2",

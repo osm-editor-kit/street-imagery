@@ -6,7 +6,6 @@
       "name": "street-level-imagery-provider-overview",
       "devDependencies": {
         "@changesets/cli": "^3.0.3",
-        "@clack/prompts": "^1.7.0",
         "@typescript/typescript-darwin-arm64": "^7.0.2",
         "eslint-plugin-compat": "^7.0.2",
         "eslint-plugin-react-hooks": "^7.1.1",
@@ -15,7 +14,6 @@
         "oxlint": "1.89.0",
         "oxlint-config-react-hooks-js": "^1.1.4",
         "oxlint-tsgolint": "7.0.2005",
-        "picocolors": "^1.1.1",
         "typescript": "^7.0.2",
       },
       "optionalDependencies": {
@@ -25,18 +23,14 @@
     "apps/preview": {
       "name": "preview",
       "dependencies": {
-        "@mapbox/vector-tile": "^3.0.0",
         "@osm-editor-kit/street-imagery": "workspace:*",
         "@osm-editor-kit/street-imagery-react": "workspace:*",
         "@photo-sphere-viewer/core": "^5.15.1",
         "@photo-sphere-viewer/cubemap-adapter": "^5.15.1",
         "@photo-sphere-viewer/cubemap-tiles-adapter": "^5.15.1",
-        "@photo-sphere-viewer/equirectangular-tiles-adapter": "^5.15.1",
-        "@photo-sphere-viewer/markers-plugin": "^5.15.1",
         "@photo-sphere-viewer/virtual-tour-plugin": "^5.15.1",
         "@tanstack/react-query": "^5.104.0",
         "@tanstack/react-router": "^1.170.40",
-        "date-fns": "^4.4.0",
         "mapillary-js": "^4.1.2",
         "maplibre-gl": "^6.11.2",
         "react": "^19.3.0",
@@ -92,12 +86,14 @@
     "packages/street-imagery-react": {
       "name": "@osm-editor-kit/street-imagery-react",
       "version": "1.0.0",
+      "dependencies": {
+        "@types/geojson": "^7946.0.16",
+      },
       "devDependencies": {
         "@babel/core": "^7.29.7",
         "@panoramax/web-viewer": "^5",
         "@tanstack/react-query": "^5.85.5",
         "@types/babel__core": "^7.20.5",
-        "@types/geojson": "^7946.0.16",
         "@types/react": "^19.1.10",
         "@types/react-dom": "^19.1.7",
         "babel-plugin-react-compiler": "^19.1.0-rc.2",

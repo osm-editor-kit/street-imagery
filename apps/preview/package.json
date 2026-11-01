@@ -10,18 +10,14 @@
     "test-run": "vitest run --passWithNoTests src"
   },
   "dependencies": {
-    "@mapbox/vector-tile": "^3.0.0",
     "@osm-editor-kit/street-imagery": "workspace:*",
     "@osm-editor-kit/street-imagery-react": "workspace:*",
     "@photo-sphere-viewer/core": "^5.15.1",
     "@photo-sphere-viewer/cubemap-adapter": "^5.15.1",
     "@photo-sphere-viewer/cubemap-tiles-adapter": "^5.15.1",
-    "@photo-sphere-viewer/equirectangular-tiles-adapter": "^5.15.1",
-    "@photo-sphere-viewer/markers-plugin": "^5.15.1",
     "@photo-sphere-viewer/virtual-tour-plugin": "^5.15.1",
     "@tanstack/react-query": "^5.104.0",
     "@tanstack/react-router": "^1.170.40",
-    "date-fns": "^4.4.0",
     "mapillary-js": "^4.1.2",
     "maplibre-gl": "^6.11.2",
     "react": "^19.3.0",
