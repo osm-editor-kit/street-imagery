@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { clampFloatingViewerPosition } from './floatingViewerPosition'
+import { clampFloatingViewerPosition, resizeFloatingViewerWidth } from './floatingViewerPosition'
 
 const box = { width: 500, height: 400 }
 const screen = { width: 1000, height: 800 }
@@ -55,5 +55,32 @@ describe('clampFloatingViewerPosition with minVisibleShare', () => {
       right: -0,
       bottom: -0,
     })
+  })
+})
+
+describe('resizeFloatingViewerWidth', () => {
+  const limits = { minWidth: 280, maxWidth: 900 }
+
+  test('the right corner grows to the right, the left one to the left', () => {
+    expect(resizeFloatingViewerWidth('bottom-right', 400, { dx: 50, dy: 0 }, limits)).toBe(450)
+    expect(resizeFloatingViewerWidth('bottom-left', 400, { dx: -50, dy: 0 }, limits)).toBe(450)
+  })
+
+  test('dragged down, a corner grows by the photo width of that height', () => {
+    expect(resizeFloatingViewerWidth('bottom-right', 400, { dx: 10, dy: 30 }, limits)).toBe(440)
+    expect(resizeFloatingViewerWidth('bottom-left', 400, { dx: 0, dy: -30 }, limits)).toBe(360)
+  })
+
+  test('stays between the minimum and the room there is', () => {
+    expect(resizeFloatingViewerWidth('bottom-right', 400, { dx: -500, dy: 0 }, limits)).toBe(280)
+    expect(resizeFloatingViewerWidth('bottom-right', 400, { dx: 900, dy: 0 }, limits)).toBe(900)
+    expect(
+      resizeFloatingViewerWidth(
+        'bottom-right',
+        400,
+        { dx: 900, dy: 0 },
+        { ...limits, maxWidth: 100 },
+      ),
+    ).toBe(280)
   })
 })

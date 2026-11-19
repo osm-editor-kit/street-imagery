@@ -2,6 +2,7 @@ import type { PhotoCandidate, ViewSuggestion } from '@osm-editor-kit/street-imag
 import {
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent,
@@ -10,7 +11,13 @@ import {
 import { PhotoCount } from '../i18n/PhotoCount'
 import { PhotoDate } from '../i18n/PhotoDate'
 import { useStreetImageryI18n } from '../i18n/StreetImageryLocaleProvider'
-import { FLOATING_VIEWER_EDGE, clampFloatingViewerPosition } from './floatingViewerPosition'
+import {
+  FLOATING_VIEWER_EDGE,
+  clampFloatingViewerPosition,
+  growsToTheRight,
+  resizeFloatingViewerWidth,
+  type FloatingViewerResizeHandle,
+} from './floatingViewerPosition'
 import { viewSuggestionLabel } from './viewDirectionLabels'
 
 type Layout = { right: number; bottom: number; width: number; minimized: boolean }
@@ -80,6 +87,65 @@ const ICONS = {
   arrow: 'M12 20V5M6 11l6-6 6 6',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 11v5M12 8h.01',
 }
+
+/**
+ * Handle in a bottom corner of the box (12px radius, `rounded-xl`). Only a band along the corner's
+ * edge takes the pointer, so text close to the corner stays clickable. Bottom right a thick line
+ * in it shows that the box resizes; bottom left that line only shows while in use.
+ */
+const ResizeCorner = ({
+  handle,
+  active,
+  onPointerDown,
+  ...dragHandlers
+}: {
+  handle: FloatingViewerResizeHandle
+  active: boolean
+  onPointerDown: (event: PointerEvent<Element>) => void
+  onPointerMove: (event: PointerEvent<Element>) => void
+  onPointerUp: () => void
+  onPointerCancel: () => void
+}) => {
+  const isRight = handle === 'bottom-right'
+  return (
+    <svg
+      aria-hidden
+      className={[
+        'group/handle pointer-events-none absolute bottom-0 z-10 size-6 touch-none',
+        isRight ? 'right-0' : 'left-0 -scale-x-100',
+      ].join(' ')}
+      fill="none"
+      onPointerDown={onPointerDown}
+      viewBox="0 0 24 24"
+      {...dragHandlers}
+    >
+      {/* 9px wide along the edge, up to 7.5px into the box: clear of a footer with 8px padding. */}
+      <path
+        className={isRight ? 'cursor-nwse-resize' : 'cursor-nesw-resize'}
+        d="M21 4v8a9 9 0 0 1-9 9H4"
+        stroke="transparent"
+        strokeWidth={9}
+        style={{ pointerEvents: 'stroke' }}
+      />
+      <path
+        className={[
+          'transition-colors',
+          active
+            ? 'text-(--resize-handle-color)'
+            : isRight
+              ? 'text-slate-300 group-hover/viewer:text-slate-400 group-hover/handle:text-(--resize-handle-color)!'
+              : 'text-transparent group-hover/handle:text-(--resize-handle-color)',
+        ].join(' ')}
+        d="M20.5 9v3a8.5 8.5 0 0 1-8.5 8.5H9"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth={3}
+      />
+    </svg>
+  )
+}
+
+const RESIZE_CORNERS: FloatingViewerResizeHandle[] = ['bottom-left', 'bottom-right']
 
 const ToolbarButton = ({
   label,
@@ -273,12 +339,18 @@ export type FloatingPhotoViewerProps = {
    * container or the box changes size. Without it the box keeps 8px from the right and bottom edge.
    */
   minVisibleShare?: number
+  /**
+   * CSS colour of a resize corner under the pointer and while resizing, e.g. the host's focus
+   * colour. Default: fuchsia.
+   */
+  resizeHandleColor?: string
 }
 
 /**
  * Photo viewer box floating over the map. Render inside a positioned (relative) map container,
  * or anywhere with `position="fixed"`.
- * Drag the header to move, drag the left edge to resize. Keys: Esc closes, [ and ] step history,
+ * Drag the header to move; drag a bottom corner to resize (the mark in the bottom right corner
+ * shows it), the top stays in place. Keys: Esc closes, [ and ] step history,
  * Alt + arrow left/right step along (`step`).
  */
 export const FloatingPhotoViewer = ({
@@ -303,6 +375,7 @@ export const FloatingPhotoViewer = ({
   defaultPosition,
   position = 'absolute',
   minVisibleShare,
+  resizeHandleColor = 'oklch(66.7% 0.295 322.15)',
 }: FloatingPhotoViewerProps) => {
   const { messages } = useStreetImageryI18n()
   const severalViewpoints =
@@ -328,10 +401,15 @@ export const FloatingPhotoViewer = ({
     x: number
     y: number
     layout: Layout
-    mode: 'move' | 'resize'
+    mode: 'move' | FloatingViewerResizeHandle
+    /** Height of the box at the start; a resize moves the bottom by what it adds, so the top stays. */
+    height: number
+    /** Width the box can take with its fixed edge where it is, without leaving the container. */
+    maxWidth: number
     /** Started on a header button: a click until the pointer moves. */
     onButton: boolean
   } | null>(null)
+  const [resizing, setResizing] = useState<FloatingViewerResizeHandle | null>(null)
 
   const updateLayout = (next: Layout) => {
     setLayout(next)
@@ -402,8 +480,34 @@ export const FloatingPhotoViewer = ({
     [isFree, layout.minimized],
   )
 
-  const startDrag = (event: PointerEvent<HTMLElement>, mode: 'move' | 'resize') => {
-    const target = event.target as HTMLElement
+  // The box counts from the bottom and its height follows its width: while resizing, set the
+  // bottom so that the top stays where it was, before the new height is painted.
+  useLayoutEffect(
+    function keepTopWhileResizing() {
+      const drag = dragRef.current
+      const box = boxRef.current
+      if (!drag || drag.mode === 'move' || drag.onButton || !box) {
+        return
+      }
+      const container = containerSize(box, position)
+      const next = clampFloatingViewerPosition(
+        {
+          right: layout.right,
+          bottom: drag.layout.bottom - (box.getBoundingClientRect().height - drag.height),
+        },
+        { width: box.offsetWidth, height: box.offsetHeight },
+        container,
+        minVisibleShare,
+      )
+      if (next.bottom !== layout.bottom || next.right !== layout.right) {
+        setLayout({ ...layout, ...next })
+      }
+    },
+    [layout, position, minVisibleShare],
+  )
+
+  const startDrag = (event: PointerEvent<Element>, mode: 'move' | FloatingViewerResizeHandle) => {
+    const target = event.target as Element
     if (event.button !== 0 || target.closest('a')) {
       return
     }
@@ -422,14 +526,31 @@ export const FloatingPhotoViewer = ({
             bottom: container.height - box.offsetTop - box.offsetHeight,
           }
         : layout
-    dragRef.current = { x: event.clientX, y: event.clientY, layout: start, mode, onButton }
+    const room =
+      mode === 'move' || !container
+        ? 0
+        : growsToTheRight(mode)
+          ? start.right - EDGE
+          : container.width - start.right - start.width - EDGE
+    dragRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      layout: start,
+      mode,
+      height: box?.getBoundingClientRect().height ?? 0,
+      maxWidth: start.width + Math.max(0, room),
+      onButton,
+    }
     if (!onButton) {
       setLayout(start)
       setMoved(true)
     }
+    if (mode !== 'move') {
+      setResizing(mode)
+    }
   }
 
-  const onDrag = (event: PointerEvent<HTMLElement>) => {
+  const onDrag = (event: PointerEvent<Element>) => {
     const drag = dragRef.current
     if (!drag) {
       return
@@ -446,8 +567,18 @@ export const FloatingPhotoViewer = ({
       setMoved(true)
     }
     const box = boxRef.current
-    if (drag.mode === 'resize') {
-      setLayout({ ...drag.layout, width: Math.max(MIN_WIDTH, drag.layout.width - dx) })
+    if (drag.mode !== 'move') {
+      const width = resizeFloatingViewerWidth(
+        drag.mode,
+        drag.layout.width,
+        { dx, dy },
+        { minWidth: MIN_WIDTH, maxWidth: drag.maxWidth },
+      )
+      // The bottom follows in `keepTopWhileResizing`, once the new height is known.
+      const right = growsToTheRight(drag.mode)
+        ? drag.layout.right - (width - drag.layout.width)
+        : drag.layout.right
+      setLayout({ ...layout, width, right })
     } else if (box) {
       const next = clampFloatingViewerPosition(
         { right: drag.layout.right - dx, bottom: drag.layout.bottom - dy },
@@ -462,6 +593,7 @@ export const FloatingPhotoViewer = ({
   const endDrag = () => {
     const wasDragged = dragRef.current?.onButton === false
     dragRef.current = null
+    setResizing(null)
     if (wasDragged) {
       writeLayout(storageKey, layout)
     }
@@ -486,19 +618,23 @@ export const FloatingPhotoViewer = ({
   return (
     <section
       aria-label={messages.viewer.regionLabel}
-      className={`${position} z-10 flex max-h-[calc(100%-1rem)] flex-col overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-200`}
+      className={`group/viewer ${position} z-10 flex max-h-[calc(100%-1rem)] flex-col overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-200 ${resizing ? 'select-none' : ''}`}
       ref={boxRef}
       style={{
         ...placement,
         width: `min(${layout.width}px, calc(100% - 1rem))`,
+        ['--resize-handle-color' as string]: resizeHandleColor,
       }}
     >
-      <div
-        aria-hidden
-        className="absolute inset-y-0 left-0 z-10 w-1.5 cursor-ew-resize hover:bg-fuchsia-500/20"
-        onPointerDown={(event) => startDrag(event, 'resize')}
-        {...dragHandlers}
-      />
+      {RESIZE_CORNERS.map((handle) => (
+        <ResizeCorner
+          active={resizing === handle}
+          handle={handle}
+          key={handle}
+          onPointerDown={(event) => startDrag(event, handle)}
+          {...dragHandlers}
+        />
+      ))}
       <header
         className="flex cursor-move touch-none items-center gap-1 border-b border-slate-100 px-2 py-1.5 select-none"
         onPointerDown={(event) => startDrag(event, 'move')}

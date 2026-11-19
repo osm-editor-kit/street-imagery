@@ -34,3 +34,28 @@ export const clampFloatingViewerPosition = (
     ),
   }
 }
+
+/** Corner that resizes the box; the opposite side stays where it is, and so does the top. */
+export type FloatingViewerResizeHandle = 'bottom-left' | 'bottom-right'
+
+/** The photo's width per px of height: a corner dragged down grows the box as far as the photo. */
+const PHOTO_ASPECT = 4 / 3
+
+/**
+ * Width of the box after dragging `handle` by `dx`, `dy` from `startWidth`. The height follows the
+ * width (the photo keeps its aspect ratio), so it goes by the axis the pointer moved further.
+ */
+export const resizeFloatingViewerWidth = (
+  handle: FloatingViewerResizeHandle,
+  startWidth: number,
+  { dx, dy }: { dx: number; dy: number },
+  { minWidth, maxWidth }: { minWidth: number; maxWidth: number },
+): number => {
+  const horizontal = handle === 'bottom-left' ? -dx : dx
+  const vertical = dy * PHOTO_ASPECT
+  const delta = Math.abs(vertical) > Math.abs(horizontal) ? vertical : horizontal
+  return Math.min(Math.max(minWidth, maxWidth), Math.max(minWidth, startWidth + delta))
+}
+
+/** Whether `handle` moves the right edge; the other one moves the left edge. */
+export const growsToTheRight = (handle: FloatingViewerResizeHandle) => handle === 'bottom-right'
